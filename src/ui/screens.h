@@ -32,8 +32,8 @@ typedef struct _objects_t {
     lv_obj_t *bt_salvar_http;
     lv_obj_t *tab_docker;
     lv_obj_t *ls_cont;
-    lv_obj_t *ed_cont_cpu;
-    lv_obj_t *ed_cont_ram;
+    lv_obj_t *lb_cont_cpu;
+    lv_obj_t *lb_cont_ram;
     lv_obj_t *tab_rede;
     lv_obj_t *tab_alertas;
     lv_obj_t *tab_config;

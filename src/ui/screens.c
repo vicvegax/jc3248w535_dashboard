@@ -206,17 +206,17 @@ void create_screen_main() {
                             lv_label_set_text_static(obj, "Containers");
                         }
                         {
-                            // ed_cont_cpu
+                            // lb_cont_cpu
                             lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.ed_cont_cpu = obj;
+                            objects.lb_cont_cpu = obj;
                             lv_obj_set_pos(obj, 1, 219);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                             lv_label_set_text_static(obj, "CPU\nx%");
                         }
                         {
-                            // ed_cont_ram
+                            // lb_cont_ram
                             lv_obj_t *obj = lv_label_create(parent_obj);
-                            objects.ed_cont_ram = obj;
+                            objects.lb_cont_ram = obj;
                             lv_obj_set_pos(obj, 98, 219);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                             lv_label_set_text_static(obj, "RAM\nxMB");
