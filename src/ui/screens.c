@@ -193,46 +193,33 @@ void create_screen_main() {
                     {
                         lv_obj_t *parent_obj = obj;
                         {
-                            lv_obj_t *obj = lv_label_create(parent_obj);
-                            lv_obj_set_pos(obj, 0, -7);
-                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_label_set_text_static(obj, "Ativos");
-                        }
-                        {
-                            // ls_cont_ativos
+                            // ls_cont
                             lv_obj_t *obj = lv_list_create(parent_obj);
-                            objects.ls_cont_ativos = obj;
-                            lv_obj_set_pos(obj, 0, 9);
-                            lv_obj_set_size(obj, 180, 96);
+                            objects.ls_cont = obj;
+                            lv_obj_set_pos(obj, -9, 2);
+                            lv_obj_set_size(obj, 367, 213);
                         }
                         {
                             lv_obj_t *obj = lv_label_create(parent_obj);
-                            lv_obj_set_pos(obj, 0, 118);
+                            lv_obj_set_pos(obj, -9, -16);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_label_set_text_static(obj, "Inativos");
-                        }
-                        {
-                            // ls_cont_inativos
-                            lv_obj_t *obj = lv_list_create(parent_obj);
-                            objects.ls_cont_inativos = obj;
-                            lv_obj_set_pos(obj, 0, 134);
-                            lv_obj_set_size(obj, 180, 96);
+                            lv_label_set_text_static(obj, "Containers");
                         }
                         {
                             // ed_cont_cpu
                             lv_obj_t *obj = lv_label_create(parent_obj);
                             objects.ed_cont_cpu = obj;
-                            lv_obj_set_pos(obj, 198, 9);
+                            lv_obj_set_pos(obj, 1, 219);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_label_set_text_static(obj, "CPU");
+                            lv_label_set_text_static(obj, "CPU\nx%");
                         }
                         {
                             // ed_cont_ram
                             lv_obj_t *obj = lv_label_create(parent_obj);
                             objects.ed_cont_ram = obj;
-                            lv_obj_set_pos(obj, 198, 49);
+                            lv_obj_set_pos(obj, 98, 219);
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-                            lv_label_set_text_static(obj, "RAM");
+                            lv_label_set_text_static(obj, "RAM\nxMB");
                         }
                     }
                 }

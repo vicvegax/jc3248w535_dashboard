@@ -31,8 +31,7 @@ typedef struct _objects_t {
     lv_obj_t *ed_no_nome;
     lv_obj_t *bt_salvar_http;
     lv_obj_t *tab_docker;
-    lv_obj_t *ls_cont_ativos;
-    lv_obj_t *ls_cont_inativos;
+    lv_obj_t *ls_cont;
     lv_obj_t *ed_cont_cpu;
     lv_obj_t *ed_cont_ram;
     lv_obj_t *tab_rede;
