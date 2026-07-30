@@ -1,17 +1,21 @@
 #include <Arduino.h>
 #include "ui/ui.h"
+#include "WiFi.h"
 
 void db_home_conectado() {
-    // Altera um label que você colocou na tela Home no EEZ Studio
-    lv_label_set_text(objects.lb_conectado, "Conectado!");
+  // Altera um label que você colocou na tela Home no EEZ Studio
+  String meu_ip = "Conectado como " + WiFi.localIP().toString();
+  lv_label_set_text(objects.lb_conectado, meu_ip.c_str());
+  // lv_label_set_text(objects.lb_conectado, "Conectado como ");
+  // Serial.println(WiFi.localIP().toString());
 }
 
 void db_home_desconectado() {
-    // Altera um label que você colocou na tela Home no EEZ Studio
-    lv_label_set_text(objects.lb_conectado, "* DESCONECTADO *");
+  // Altera um label que você colocou na tela Home no EEZ Studio
+  lv_label_set_text(objects.lb_conectado, "* DESCONECTADO *");
 }
 
 // Quando o WiFi conectar e o MQTT receber dados, você chama funções aqui
-void tab_home_atualizar_dado_mqtt(const char* topico, const char* valor) {
-    // Tratar payload do MQTT e jogar na tela...
+void tab_home_atualizar_dado_mqtt(const char *topico, const char *valor) {
+  // Tratar payload do MQTT e jogar na tela...
 }

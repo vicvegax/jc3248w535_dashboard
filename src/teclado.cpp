@@ -1,44 +1,69 @@
 #include "teclado.h"
 #include "ui/ui.h"
+#include <Arduino.h>
 
-// Mantemos um ponteiro global para o teclado nesta aba
-static lv_obj_t * teclado = NULL;
+#define ALTURA_TECLADO 160 
 
-// O callback que reage aos toques no TextArea
-static void evento_teclado_cb(lv_event_t * e) {
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t * ta = lv_event_get_target(e); // O alvo é o próprio TextArea
 
-    if (code == LV_EVENT_FOCUSED || code == LV_EVENT_CLICKED) {
-        
-        // Se o teclado ainda não existe na memória, nós o criamos
-        if (teclado == NULL) {
-            // Cria o teclado na tela atual
-            teclado = lv_keyboard_create(lv_scr_act()); 
-            
-            // (Opcional) Altera para o modo de senhas/números, ou apenas letras
-            // lv_keyboard_set_mode(teclado_wifi, LV_KEYBOARD_MODE_TEXT_LOWER);
-        }
-        
-        // Associa o teclado a este campo de texto específico
-        lv_keyboard_set_textarea(teclado, ta);
-        
-        // Garante que ele fique visível
-        lv_obj_clear_flag(teclado, LV_OBJ_FLAG_HIDDEN);
-        
-    } 
-    else if (code == LV_EVENT_DEFOCUSED || code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
-        // Se o usuário clicar fora, ou apertar o "OK" (READY) do teclado
-        if (teclado != NULL) {
-            lv_obj_add_flag(teclado, LV_OBJ_FLAG_HIDDEN); // Esconde o teclado
-            lv_keyboard_set_textarea(teclado, NULL);      // Remove a associação
-        }
+// Função auxiliar interna para tratar o fechamento do teclado
+static void fechar_teclado_event_cb(lv_event_t * e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  
+  // Verifica se o usuário clicou no botão "Ready" (✓) ou "Close" (X) do teclado
+  if(code == LV_EVENT_READY || code == LV_EVENT_CANCEL || code == LV_EVENT_DEFOCUSED) {
+    if (!lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
+      lv_coord_t altura_atual = lv_obj_get_height(objects.tv_dashboard);
+      lv_obj_set_height(objects.tv_dashboard, altura_atual + ALTURA_TECLADO);
+      altura_atual = lv_obj_get_height(objects.tv_config);
+      lv_obj_set_height(objects.tv_config, altura_atual + ALTURA_TECLADO);
+
+      // Esconde o teclado novamente
+      lv_obj_add_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN);
     }
+    // Remove o foco do textarea atual para limpar o cursor
+    lv_obj_t * ta = lv_keyboard_get_textarea(objects.keyboard_1);
+    if(ta) {
+      lv_obj_clear_state(ta, LV_STATE_FOCUSED);
+      
+      // Isso garante que o próximo clique seja computado como um NOVO foco, reabrindo o teclado.
+      lv_group_focus_obj(NULL); 
+    }
+  }
 }
 
-void anexar_teclado(lv_obj_t * textarea) {
-    // Adiciona nosso callback ao campo de senha criado pelo EEZ Studio
-    if(textarea != NULL) {
-        lv_obj_add_event_cb(textarea, evento_teclado_cb, LV_EVENT_ALL, NULL);
-    }
+extern "C" void action_set_keyboard(lv_event_t *e) {
+  // 1. Identifica o Textarea focado
+  lv_obj_t * textarea_focado = lv_event_get_target(e); 
+  
+  // 2. Vincula o teclado ao Textarea
+  lv_keyboard_set_textarea(objects.keyboard_1, textarea_focado); 
+
+  uintptr_t user_data_val = (uintptr_t)lv_event_get_user_data(e);
+  // Serial.println(user_data_val);
+  if(user_data_val == 987654) {
+    // Altera o layout do teclado para modo exclusivamente numérico (+, - e ponto)
+    lv_keyboard_set_mode(objects.keyboard_1, LV_KEYBOARD_MODE_NUMBER);
+  } else {
+  // Retorna o layout para o teclado de texto padrão (letras minúsculas/maiúsculas)
+    lv_keyboard_set_mode(objects.keyboard_1, LV_KEYBOARD_MODE_TEXT_LOWER);
+  }
+  //   lv_keyboard_set_textarea(objects.keyboard_1, textarea_focado); 
+  
+  if(lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
+    lv_coord_t altura_atual = lv_obj_get_height(objects.tv_dashboard);
+    lv_obj_set_height(objects.tv_dashboard, altura_atual - ALTURA_TECLADO);
+
+    altura_atual = lv_obj_get_height(objects.tv_config);
+    lv_obj_set_height(objects.tv_config, altura_atual - ALTURA_TECLADO);
+
+    // 3. Torna o teclado visível (remove a flag Hidden)
+    lv_obj_clear_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN);
+  }
+  lv_obj_scroll_to_view(textarea_focado, LV_ANIM_OFF); 
+  
+  // 4. Adiciona um evento ao próprio teclado para saber quando o usuário terminou
+  // Usamos lv_obj_remove_event_cb para evitar adicionar o mesmo evento múltiplas vezes
+  lv_obj_remove_event_cb(objects.keyboard_1, fechar_teclado_event_cb);
+  lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_READY, NULL);
+  lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_CANCEL, NULL);
 }

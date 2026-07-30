@@ -7,18 +7,18 @@
 
 // Preenche o Dropdown com redes disponíveis
 void tab_config_escanear_redes() {
-    WiFi.mode(WIFI_STA);    // Garante que o chip está operando como Estação (Cliente)
-    WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
-    delay(200);             // Dá um respiro de 100ms para o hardware limpar o estado
-
-    int n = WiFi.scanNetworks();
-    String opcoes = "";
-    for (int i = 0; i < n; ++i) {
-        opcoes += WiFi.SSID(i) + "\n";
-    }
-    
-    lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
+  exibir_spinner();  
+  
+  int n = WiFi.scanNetworks();
+  String opcoes = "";
+  for (int i = 0; i < n; ++i) {
+      opcoes += WiFi.SSID(i) + "\n";
+  }
+  
+  lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
+  ocultar_spinner();
 }
+
 // 1. Crie esta pequena função logo ACIMA da sua action
 static void ir_para_home_async(void * param) {
     // Essa função vai rodar com segurança fora do evento de clique!
@@ -43,7 +43,7 @@ extern "C" void action_conectar_wifi(lv_event_t * e) {
     
     // Pega a senha do Text Area
     // OBS: Troque 'ui_TextAreaSenha' pelo nome do seu campo de texto
-    const char* senha_digitada = lv_textarea_get_text(objects.ed_senha);
+    const char* senha_digitada = lv_textarea_get_text(objects.ed_wifi_senha);
     // Chama a função do wifi_manager
     if(salvar_e_conectar(String(ssid_selecionado), String(senha_digitada))) {
         db_home_conectado();
@@ -62,7 +62,7 @@ extern "C" void action_conectar_wifi(lv_event_t * e) {
 
 extern "C" void action_salvar_config(lv_event_t *e) {
     // TODO: Implement action salvar_config here
-    salvar_http_port(String(lv_textarea_get_text(objects.ed_http)), String(lv_textarea_get_text(objects.ed_port)).toInt());
+    salvar_http_port(String(lv_textarea_get_text(objects.ed_no_http)), String(lv_textarea_get_text(objects.ed_no_port)).toInt());
     Serial.println("Configuração HTTP salva!");
     lv_obj_t * label = lv_obj_get_child(objects.bt_salvar_http, 0);
     lv_label_set_text(label, "SALVO!");
@@ -76,4 +76,10 @@ extern "C" void action_esquecer_wifi(lv_event_t * e) {
     lv_btnmatrix_set_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED); // Desativa Alertas (índice 1)
     lv_obj_t * label = lv_obj_get_child(objects.bt_esquecer, 0);
     lv_label_set_text(label, "Esquecido...");
+}
+
+extern "C" void action_mostrar_senha(lv_event_t *e) {
+    // TODO: Implement action mostrar_senha here}
+    lv_obj_t * cb = lv_event_get_target(e);
+    lv_textarea_set_password_mode(objects.ed_wifi_senha, !lv_obj_has_state(cb, LV_STATE_CHECKED));
 }

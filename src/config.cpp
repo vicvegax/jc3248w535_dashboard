@@ -1,8 +1,11 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include "config.h"
+#include "ui/ui.h"
 
 Preferences prefs;
+String url = "";
+String token = "";
 
 // Tenta conectar com o que está salvo
 bool iniciar_wifi_salvo() {
@@ -27,8 +30,13 @@ bool iniciar_wifi_salvo() {
 
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("Conectado com sucesso!");
+        url = "http://" + ler_http() + ":" + ler_port();
+        token = ler_token();
+
         return true;
     } else {
+        WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
+        delay(200);             // Dá um respiro de 100ms para o hardware limpar o estado
         Serial.println("Falha ao conectar.");
         return false;
     }
@@ -51,6 +59,13 @@ void salvar_http_port(String novo_http, int novo_port) {
     prefs.end();
 }
 
+String ler_token() {
+    prefs.begin("config", true); // true = Somente leitura
+    String http = prefs.getString("token", "abcd1234");
+    prefs.end();
+    return http;
+}
+
 String ler_http() {
     prefs.begin("config", true); // true = Somente leitura
     String http = prefs.getString("http", "");
@@ -70,4 +85,14 @@ void esquecer_wifi() {
     prefs.putString("ssid", "");
     prefs.putString("pass", "");
     prefs.end();
+}
+
+void exibir_spinner() {
+  lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
+  lv_refr_now(NULL);
+}
+
+void ocultar_spinner() {
+  lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
+  lv_refr_now(NULL);
 }
