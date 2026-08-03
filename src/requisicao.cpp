@@ -6,13 +6,14 @@ extern SemaphoreHandle_t lvgl_mutex;
 RequisicaoAgendada req_atual = {"", NULL, false};
 
 void get(String path, HttpCallback callback_processamento) {
-    exibir_spinner();
+  exibir_spinner();
 
-    // Apenas agenda a requisição para o loop principal executar fora do LVGL
-    req_atual.url = url + path;
-    req_atual.callback = callback_processamento;
-    req_atual.pendente = true;
+  // Apenas agenda a requisição para o loop principal executar fora do LVGL
+  req_atual.url = "http://" + cluster.http + ":" + cluster.port + path;
+  req_atual.callback = callback_processamento;
+  req_atual.pendente = true;
 
+  Serial.printf("Requisição GET agendada: %s\n", req_atual.url.c_str());
 }
 
 void requisicoes_pendentes() {
@@ -21,13 +22,14 @@ void requisicoes_pendentes() {
 
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("Erro: Wi-Fi desconectado.");
+        ocultar_spinner();
         return;
     }
 
     HTTPClient http;
     http.begin(req_atual.url);
     
-    String bearerHeader = "Bearer " + String(token);
+    String bearerHeader = "Bearer " + String(cluster.token);
     http.addHeader("Authorization", bearerHeader.c_str());
     // (Opcional) Garante que o servidor saiba que você espera um JSON
     http.addHeader("Accept", "application/json"); 
@@ -43,6 +45,7 @@ void requisicoes_pendentes() {
         // Se o JSON for válido e houver uma função cadastrada, envia os dados
         if (!error && req_atual.callback != NULL) {
           if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
+            Serial.println("Processando callback da requisição...");
             req_atual.callback(doc);
             xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
           }

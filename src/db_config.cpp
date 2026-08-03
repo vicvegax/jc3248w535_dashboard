@@ -33,53 +33,45 @@ static void ir_para_home_async(void * param) {
 
 // Ação gerada pelo EEZ Studio ao clicar no botão "OK Conectar"
 extern "C" void action_conectar_wifi(lv_event_t * e) {
-    lv_obj_t * label = lv_obj_get_child(objects.bt_conectar, 0);
-    lv_label_set_text(label, "Conectando...");
-    //DELAY PARA ATUALIZAR O LABEL ANTES DE CONECTAR
-    lv_refr_now(NULL);
-    // Pega o texto selecionado no Dropdown
-    char ssid_selecionado[64];
-    lv_dropdown_get_selected_str(objects.ls_wifi, ssid_selecionado, sizeof(ssid_selecionado));
-    
-    // Pega a senha do Text Area
-    // OBS: Troque 'ui_TextAreaSenha' pelo nome do seu campo de texto
-    const char* senha_digitada = lv_textarea_get_text(objects.ed_wifi_senha);
-    // Chama a função do wifi_manager
-    if(salvar_e_conectar(String(ssid_selecionado), String(senha_digitada))) {
-        db_home_conectado();
-        lv_label_set_text(label, "Conectar");
+  lv_obj_t * label = lv_obj_get_child(objects.bt_conectar, 0);
+  lv_label_set_text(label, "Conectando...");
+  //DELAY PARA ATUALIZAR O LABEL ANTES DE CONECTAR
+  lv_refr_now(NULL);
+  // Pega o texto selecionado no Dropdown
+  char ssid_selecionado[64];
+  lv_dropdown_get_selected_str(objects.ls_wifi, ssid_selecionado, sizeof(ssid_selecionado));
+  
+  // Pega a senha do Text Area
+  // OBS: Troque 'ui_TextAreaSenha' pelo nome do seu campo de texto
+  const char* senha_digitada = lv_textarea_get_text(objects.ed_wifi_senha);
+  // Chama a função do wifi_manager
+  if(salvar_e_conectar(String(ssid_selecionado), String(senha_digitada))) {
+    db_home_conectado();
+    lv_label_set_text(label, "Conectar");
 
-        lv_async_call(ir_para_home_async, NULL);
-    } else {
-        db_home_desconectado();
-        // Mostre uma mensagem de erro (MsgBox ou Label)
-        lv_label_set_text(label, "Conectar...");
+    lv_async_call(ir_para_home_async, NULL);
+  } else {
+    db_home_desconectado();
+    // Mostre uma mensagem de erro (MsgBox ou Label)
+    lv_label_set_text(label, "Conectar...");
 
-        Serial.println("Falha ao conectar! Verifique SSID e senha.");
-    }
+    Serial.println("Falha ao conectar! Verifique SSID e senha.");
+  }
 
-}
-
-extern "C" void action_salvar_config(lv_event_t *e) {
-    // TODO: Implement action salvar_config here
-    salvar_http_port(String(lv_textarea_get_text(objects.ed_no_http)), String(lv_textarea_get_text(objects.ed_no_port)).toInt());
-    Serial.println("Configuração HTTP salva!");
-    lv_obj_t * label = lv_obj_get_child(objects.bt_salvar_http, 0);
-    lv_label_set_text(label, "SALVO!");
 }
 
 extern "C" void action_esquecer_wifi(lv_event_t * e) {
-    esquecer_wifi();
-    db_home_desconectado();
-    
-    lv_obj_t * tab_btns = lv_tabview_get_tab_btns(objects.tv_dashboard);
-    lv_btnmatrix_set_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED); // Desativa Alertas (índice 1)
-    lv_obj_t * label = lv_obj_get_child(objects.bt_esquecer, 0);
-    lv_label_set_text(label, "Esquecido...");
+  esquecer_wifi();
+  db_home_desconectado();
+  
+  lv_obj_t * tab_btns = lv_tabview_get_tab_btns(objects.tv_dashboard);
+  lv_btnmatrix_set_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED); // Desativa Alertas (índice 1)
+  lv_obj_t * label = lv_obj_get_child(objects.bt_esquecer, 0);
+  lv_label_set_text(label, "Esquecido...");
 }
 
 extern "C" void action_mostrar_senha(lv_event_t *e) {
-    // TODO: Implement action mostrar_senha here}
-    lv_obj_t * cb = lv_event_get_target(e);
-    lv_textarea_set_password_mode(objects.ed_wifi_senha, !lv_obj_has_state(cb, LV_STATE_CHECKED));
+  // TODO: Implement action mostrar_senha here}
+  lv_obj_t * cb = lv_event_get_target(e);
+  lv_textarea_set_password_mode(objects.ed_wifi_senha, !lv_obj_has_state(cb, LV_STATE_CHECKED));
 }

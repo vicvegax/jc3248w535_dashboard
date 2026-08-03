@@ -2,7 +2,11 @@
 #include "ui/ui.h"
 #include <Arduino.h>
 
-#define ALTURA_TECLADO 160 
+#define ALTURA_TECLADO     160 
+#define TV_DASHBOARD_OPENED   284
+#define TV_DASHBOARD_CLOSED   TV_DASHBOARD_OPENED - ALTURA_TECLADO
+#define TV_CONFIG_OPENED   265
+#define TV_CONFIG_CLOSED   TV_CONFIG_OPENED - ALTURA_TECLADO
 
 
 // Função auxiliar interna para tratar o fechamento do teclado
@@ -12,10 +16,8 @@ static void fechar_teclado_event_cb(lv_event_t * e) {
   // Verifica se o usuário clicou no botão "Ready" (✓) ou "Close" (X) do teclado
   if(code == LV_EVENT_READY || code == LV_EVENT_CANCEL || code == LV_EVENT_DEFOCUSED) {
     if (!lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
-      lv_coord_t altura_atual = lv_obj_get_height(objects.tv_dashboard);
-      lv_obj_set_height(objects.tv_dashboard, altura_atual + ALTURA_TECLADO);
-      altura_atual = lv_obj_get_height(objects.tv_config);
-      lv_obj_set_height(objects.tv_config, altura_atual + ALTURA_TECLADO);
+      lv_obj_set_height(objects.tv_dashboard, TV_DASHBOARD_OPENED);
+      lv_obj_set_height(objects.tv_config, TV_CONFIG_OPENED);
 
       // Esconde o teclado novamente
       lv_obj_add_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN);
@@ -50,11 +52,8 @@ extern "C" void action_set_keyboard(lv_event_t *e) {
   //   lv_keyboard_set_textarea(objects.keyboard_1, textarea_focado); 
   
   if(lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
-    lv_coord_t altura_atual = lv_obj_get_height(objects.tv_dashboard);
-    lv_obj_set_height(objects.tv_dashboard, altura_atual - ALTURA_TECLADO);
-
-    altura_atual = lv_obj_get_height(objects.tv_config);
-    lv_obj_set_height(objects.tv_config, altura_atual - ALTURA_TECLADO);
+    lv_obj_set_height(objects.tv_dashboard, TV_DASHBOARD_CLOSED);
+    lv_obj_set_height(objects.tv_config, TV_CONFIG_CLOSED);
 
     // 3. Torna o teclado visível (remove a flag Hidden)
     lv_obj_clear_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN);
@@ -63,6 +62,7 @@ extern "C" void action_set_keyboard(lv_event_t *e) {
   
   // 4. Adiciona um evento ao próprio teclado para saber quando o usuário terminou
   // Usamos lv_obj_remove_event_cb para evitar adicionar o mesmo evento múltiplas vezes
+  lv_obj_remove_event_cb(objects.keyboard_1, fechar_teclado_event_cb);
   lv_obj_remove_event_cb(objects.keyboard_1, fechar_teclado_event_cb);
   lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_READY, NULL);
   lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_CANCEL, NULL);
