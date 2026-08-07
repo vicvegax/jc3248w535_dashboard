@@ -35,6 +35,9 @@ typedef struct _objects_t {
     lv_obj_t *lb_cont_cpu;
     lv_obj_t *lb_cont_ram;
     lv_obj_t *tab_rede;
+    lv_obj_t *lb_download;
+    lv_obj_t *lb_upload;
+    lv_obj_t *lb_ping;
     lv_obj_t *tab_alertas;
     lv_obj_t *tab_config;
     lv_obj_t *tv_config;

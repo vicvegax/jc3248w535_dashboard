@@ -178,6 +178,33 @@ void create_screen_main() {
                     // tab_rede
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Rede");
                     objects.tab_rede = obj;
+                    {
+                        lv_obj_t *parent_obj = obj;
+                        {
+                            // lb_download
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_download = obj;
+                            lv_obj_set_pos(obj, 18, 19);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_label_set_text_static(obj, "Download:");
+                        }
+                        {
+                            // lb_upload
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_upload = obj;
+                            lv_obj_set_pos(obj, 18, 65);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_label_set_text_static(obj, "Upload:");
+                        }
+                        {
+                            // lb_ping
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_ping = obj;
+                            lv_obj_set_pos(obj, 18, 108);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_label_set_text_static(obj, "Ping");
+                        }
+                    }
                 }
                 {
                     // tab_alertas

@@ -1,0 +1,40 @@
+🟢 Dashboard inicial.
+🐳 Docker.
+📊 CPU/RAM.
+🌡️ Temperatura.
+🌐 Rede.
+⚠️ Alertas.
+⚙️ Configurações.
+
+
+🏠 Home
+  Nome do nó
+  Temperatura
+  CPU
+  RAM
+
+🐳 Docker
+  Containers ativos
+  Containers parados
+  Uso de CPU por container
+
+🌐 Rede
+  Upload
+  Download
+  Ping
+  IP
+
+📈 Cluster
+  Nós online
+  Estado do k3s
+  Pods
+
+⚠️ Alertas
+  Temperatura alta
+  SSD cheio
+  Container caiu
+
+⚙️ Configuração
+  Reiniciar serviço
+  Reiniciar Orange Pi
+  Atualizar sistema

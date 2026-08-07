@@ -2,16 +2,24 @@
 #include "db_docker.h"
 #include "requisicao.h"
 
+extern lv_style_t estilo_checked;
+
 static void cont_stat_cb(JsonDocument& doc);
 static void bt_cont_cb(lv_event_t *e);
+static void list_dockers_cb(JsonDocument& doc);
 
-void list_dockers_cb(JsonDocument& doc) {
+void lista_containers() {
+  Serial.println("DOCKER aberta. Listando containers...");
+  lv_obj_clean(objects.ls_cont); 
+  get("/containers", list_dockers_cb);
+  requisicoes_pendentes();
+}
+
+static void list_dockers_cb(JsonDocument& doc) {
   // 1. Limpa os itens antigos de ambas as listas para evitar duplicação
   // Certifique-se de usar os nomes exatos gerados pelo EEZ Studio
-  lv_obj_clean(objects.ls_cont); 
 
   char buffer_texto[64]; // Buffer para armazenar a string formatada "nome - id"
-  lv_obj_t * btn;
   // 2. PROCESSA OS CONTAINERS ATIVOS
   lv_list_add_text(objects.ls_cont, "Ativos");
   JsonArray ativos = doc["ativos"].as<JsonArray>();
@@ -29,10 +37,11 @@ void list_dockers_cb(JsonDocument& doc) {
       char * id_armazenado = (char *)malloc(13);
       strcpy(id_armazenado, id);
 
-      btn = lv_list_add_btn(objects.ls_cont, NULL, buffer_texto);
+      lv_obj_t * btn = lv_list_add_btn(objects.ls_cont, NULL, buffer_texto);
       lv_obj_set_user_data(btn, (void *)id_armazenado);
       lv_obj_add_flag(btn, LV_OBJ_FLAG_CHECKABLE);
       lv_obj_add_event_cb(btn, bt_cont_cb, LV_EVENT_CLICKED, NULL);
+      lv_obj_add_style(btn, &estilo_checked, LV_STATE_CHECKED);
     }
   }
 
@@ -58,10 +67,9 @@ static void bt_cont_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_target(e);
     if(code == LV_EVENT_CLICKED) {
-      lv_obj_t * lista_pai = lv_obj_get_parent(objects.ls_cont);
-      uint32_t total_itens = lv_obj_get_child_cnt(lista_pai);
+      uint32_t total_itens = lv_obj_get_child_cnt(objects.ls_cont);
       for(uint32_t i = 0; i < total_itens; i++) {
-          lv_obj_t * filho = lv_obj_get_child(lista_pai, i);
+          lv_obj_t * filho = lv_obj_get_child(objects.ls_cont, i);
           
           // Se o filho for um botão e NÃO for o que acabou de ser clicado, desmarca ele
           if(filho != obj) {

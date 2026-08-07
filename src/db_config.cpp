@@ -4,7 +4,12 @@
 #include "db_config.h"
 #include "config.h"
 #include "db_home.h"
+#include <Esp.h>
 
+extern "C" void action_resetar(lv_event_t *e) {
+    // TODO: Implement action resetar here
+    ESP.restart();
+}
 // Preenche o Dropdown com redes disponíveis
 void tab_config_escanear_redes() {
   exibir_spinner();  

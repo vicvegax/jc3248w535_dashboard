@@ -1,7 +1,7 @@
 {
   "navigation": {
     "selectedUserPageObject": "[dashboard.eez-project]:/userPages/0",
-    "selectedActionObject": "[dashboard.eez-project]:/actions/9",
+    "selectedActionObject": "[dashboard.eez-project]:/actions/10",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Enums"
     }
@@ -123,6 +123,7 @@
                   "type": "tabset",
                   "id": "#eb54505f-552c-459f-a8e8-1b3ca8010e76",
                   "weight": 1,
+                  "selected": 2,
                   "enableClose": false,
                   "children": [
                     {
@@ -1111,18 +1112,14 @@
         "0": {
           "1": {
             "0": {},
-            "1": {
-              "2": {}
-            },
-            "2": {
-              "3": {}
-            },
-            "3": {},
-            "4": {},
-            "5": {
+            "3": {
               "0": {
                 "$selected": true
               }
+            },
+            "4": {},
+            "5": {
+              "0": {}
             }
           },
           "3": {}
@@ -1197,7 +1194,9 @@
   "selectedStylePropertyName": "",
   "lvglPart": "MAIN",
   "lvglState": "DEFAULT",
-  "lvglExpandedPropertiesGroup": [],
+  "lvglExpandedPropertiesGroup": [
+    "POSITION AND SIZE"
+  ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,
   "flowZoom": 1,

@@ -17,11 +17,11 @@
 #include "db_docker.h"
 
 SemaphoreHandle_t lvgl_mutex;
-
+lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
 
 void setup() {
-  delay(3000);
+  // delay(1000);
   String title = "Dashboard";
 
   Serial.begin(115200);
@@ -44,6 +44,14 @@ void setup() {
   lvgl_mutex = xSemaphoreCreateMutex();
   
   ui_init();
+
+  lv_style_init(&estilo_checked);
+  // Cor de fundo azul quando marcado
+  lv_style_set_bg_color(&estilo_checked, lv_palette_main(LV_PALETTE_BLUE)); 
+  lv_style_set_bg_opa(&estilo_checked, LV_OPA_COVER);
+  // Texto branco quando marcado
+  lv_style_set_text_color(&estilo_checked, lv_color_white()); 
+
   // deletarCluster(0); // Limpa o cluster 0 para testes
 
   lv_obj_set_parent(objects.keyboard_1, lv_layer_top());
@@ -125,11 +133,12 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
       case 1: //Cluster
         lista_clusters();
         break;
-      case 2:
+      case 2: //Docker
         /* code */
-        Serial.println("DOCKER aberta. Listando containers...");
-        get("/containers", list_dockers_cb);
-        requisicoes_pendentes();
+        lista_containers();
+        break;
+      case 3: //Rede
+        info_rede();
         break;
     }
   }
