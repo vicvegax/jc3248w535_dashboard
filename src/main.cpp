@@ -16,7 +16,7 @@
 #include "requisicao.h"
 #include "db_docker.h"
 
-SemaphoreHandle_t lvgl_mutex;
+//SemaphoreHandle_t lvgl_mutex;
 lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
 
@@ -41,7 +41,7 @@ void setup() {
   /* Lock the mutex due to the LVGL APIs are not thread-safe */
   bsp_display_lock(0);
 
-  lvgl_mutex = xSemaphoreCreateMutex();
+  // lvgl_mutex = xSemaphoreCreateMutex();
   
   ui_init();
 

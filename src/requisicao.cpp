@@ -1,7 +1,7 @@
 #include "requisicao.h"
 #include "config.h"
 
-extern SemaphoreHandle_t lvgl_mutex; 
+// extern SemaphoreHandle_t lvgl_mutex; 
 
 RequisicaoAgendada req_atual = {"", NULL, false};
 
@@ -44,11 +44,11 @@ void requisicoes_pendentes() {
         
         // Se o JSON for válido e houver uma função cadastrada, envia os dados
         if (!error && req_atual.callback != NULL) {
-          if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
+          // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
             Serial.println("Processando callback da requisição...");
             req_atual.callback(doc);
-            xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
-          }
+            // xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
+          // }
 
         } else if (error) {
           Serial.printf("Erro no Parse do JSON: %s\n", error.c_str());
@@ -57,8 +57,8 @@ void requisicoes_pendentes() {
         Serial.printf("Erro HTTP: %d\n", httpCode);
     }
     http.end();
-    if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
+    // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
       ocultar_spinner();
-      xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
-    }
+      // xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
+    // }
 }
