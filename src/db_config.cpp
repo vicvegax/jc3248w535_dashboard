@@ -5,14 +5,18 @@
 #include "config.h"
 #include "db_home.h"
 #include <Esp.h>
+#include <esp_bsp.h>
+#include "logger.h"
 
 extern "C" void action_resetar(lv_event_t *e) {
     // TODO: Implement action resetar here
     ESP.restart();
 }
 // Preenche o Dropdown com redes disponíveis
-void tab_config_escanear_redes() {
-  exibir_spinner();  
+void escanear_redes() {
+  if(!loopListaWifi) return;
+  loopListaWifi = false;
+  //exibir_spinner();  
   
   int n = WiFi.scanNetworks(false, false, false, 300);
   String opcoes = "";
@@ -21,11 +25,17 @@ void tab_config_escanear_redes() {
         opcoes += WiFi.SSID(i) + "\n";
     }
     WiFi.scanDelete();
+    LOG_INFO_1("WIFI", "Localizado %d redes", n);
   } else {
-    Serial.printf("Erro ao escanear redes Wi-Fi: %d\n", n);
+    LOG_ERROR_1("WIFI", "Erro ao escanear redes: %d", n);
   }
   
-  lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
+  if(bsp_display_lock(0)) {
+    lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
+    bsp_display_unlock();
+  } else {
+    LOG_ERROR("CONFIG", "Erro lock");
+  }
   ocultar_spinner();
 }
 
@@ -56,12 +66,12 @@ extern "C" void action_conectar_wifi(lv_event_t * e) {
   const char* senha_digitada = lv_textarea_get_text(objects.ed_wifi_senha);
   // Chama a função do wifi_manager
   if(salvar_e_conectar(String(ssid_selecionado), String(senha_digitada))) {
-    db_home_conectado();
+    db_conectado();
     lv_label_set_text(label, "Conectar");
 
     lv_async_call(ir_para_home_async, NULL);
   } else {
-    db_home_desconectado();
+    db_desconectado();
     // Mostre uma mensagem de erro (MsgBox ou Label)
     lv_label_set_text(label, "Conectar...");
 
@@ -72,7 +82,7 @@ extern "C" void action_conectar_wifi(lv_event_t * e) {
 
 extern "C" void action_esquecer_wifi(lv_event_t * e) {
   esquecer_wifi();
-  db_home_desconectado();
+  db_desconectado();
   
   lv_obj_t * tab_btns = lv_tabview_get_tab_btns(objects.tv_dashboard);
   lv_btnmatrix_set_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED); // Desativa Alertas (índice 1)

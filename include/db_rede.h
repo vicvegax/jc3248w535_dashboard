@@ -1,3 +1,3 @@
 #pragma once
 
-void info_rede();
+void lv_info_rede();

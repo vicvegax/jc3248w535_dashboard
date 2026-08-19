@@ -7,9 +7,10 @@ extern lv_style_t estilo_checked;
 
 static void cont_stat_cb(JsonDocument& doc);
 static void bt_cont_cb(lv_event_t *e);
-static void list_dockers_cb(JsonDocument& doc);
+static void lv_lista_dockers_cb(JsonDocument& doc);
 
-void lista_containers() {
+void lv_lista_containers() {
+  //Limpa primeiro
   uint32_t itens_atuais = lv_obj_get_child_cnt(objects.ls_cont);
   for (uint32_t i = 0; i < itens_atuais; i++) {
     lv_obj_t * item = lv_obj_get_child(objects.ls_cont, i);
@@ -20,11 +21,12 @@ void lista_containers() {
     }
   }
   lv_obj_clean(objects.ls_cont); 
-  get("/containers", list_dockers_cb);
-  requisicoes_pendentes();
+
+  //Faz requisição
+  get("/containers", lv_lista_dockers_cb);
 }
 
-static void list_dockers_cb(JsonDocument& doc) {
+static void lv_lista_dockers_cb(JsonDocument& doc) {
   // 1. Limpa os itens antigos de ambas as listas para evitar duplicação
   // Certifique-se de usar os nomes exatos gerados pelo EEZ Studio
 
@@ -43,7 +45,7 @@ static void list_dockers_cb(JsonDocument& doc) {
       
       // Adiciona o item no List de ativos. O segundo parâmetro pode ser um ícone (ex: LV_SYMBOL_PLAY)
       // lv_list_add_btn(objects.ls_cont_ativos, LV_SYMBOL_PLAY, buffer_texto);
-      size_t id_tamanho = 64;
+      size_t id_tamanho = strlen(id) + 1;
       char * id_armazenado = (char *)malloc(id_tamanho);
       if (id_armazenado == NULL) {
         Serial.println("Erro: memoria insuficiente para armazenar ID do container.");
@@ -98,7 +100,6 @@ static void bt_cont_cb(lv_event_t *e) {
       if (container_id != NULL) {
           // PRONTO! Dados isolados perfeitamente com zero processamento de string
           get("/container/" + String(container_id), cont_stat_cb);
-          requisicoes_pendentes();
           Serial.printf("\n[DOCKER] Clique detectado de forma nativa:\n");
           Serial.printf("ID do Container:   %s\n", container_id);
           

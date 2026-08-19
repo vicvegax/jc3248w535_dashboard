@@ -13,6 +13,7 @@ extern Cluster cluster;
 
 extern const int MAX_CLUSTERS;
 
+extern bool loopListaWifi;
 // Declaração das funções (implementadas abaixo)
 void salvarClusters(Cluster itens[], int total);
 int carregarClusters(Cluster itens[]);

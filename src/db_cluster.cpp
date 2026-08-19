@@ -14,8 +14,8 @@ extern "C" void action_show_form_cluster(lv_event_t *e) {
     lv_scr_load(objects.form_cluster);
 }
 
-void lista_clusters() {
-  Serial.println("CLUSTER aberta. Listando nos...");
+void lv_lista_clusters() {
+  // Serial.println("CLUSTER aberta. Listando nos...");
   Cluster itens[MAX_CLUSTERS];
   lv_obj_clean(objects.ls_clusters); // Limpa a lista antes de adicionar novos itens
   int total = carregarClusters(itens);
@@ -36,7 +36,7 @@ static void bt_cluster_cb(lv_event_t *e) {
   lv_obj_t * btn = lv_event_get_target(e);
   if(code == LV_EVENT_CLICKED) {
     int id = (int)(uintptr_t)lv_obj_get_user_data(btn);
-    Serial.println("Cluster selecionado: " + String(id));
+    // Serial.println("Cluster selecionado: " + String(id));
     
     lv_obj_t * parent = lv_obj_get_parent(btn);
     uint32_t total_itens = lv_obj_get_child_cnt(parent);

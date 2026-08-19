@@ -3,9 +3,11 @@
 #include "config.h"
 #include "ui/ui.h"
 #include <esp_bsp.h>
+#include "logger.h"
 
 Preferences prefs;
 Cluster cluster;
+bool loopListaWifi = false;
 
 // extern SemaphoreHandle_t lvgl_mutex; 
 
@@ -14,13 +16,15 @@ const char* CLUSTER_KEY = "json";
 const int MAX_CLUSTERS = 20;
 
 void showHeap(String msg) {
-  Serial.printf("**** %s: Heap Livre: %d bytes\n", msg, ESP.getFreeHeap());
-  Serial.printf("**** %s: Maior bloco livre: %d bytes\n", msg, ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
+  // Serial.printf("**** %s: Heap Livre: %d bytes\n", msg, ESP.getFreeHeap());
+  // Serial.printf("**** %s: Maior bloco livre: %d bytes\n", msg, ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
+  if(ESP.getMinFreeHeap() < 100000) {
+    LOG_WARN_1("HEAP", "Abaixo de 100k: %d", ESP.getMinFreeHeap());
+  }
 }
 
 // Tenta conectar com o que está salvo
 bool iniciar_wifi_salvo() {
-  Serial.println("Tentando conectar com Wi-Fi salvo...");
   prefs.begin("wifi", true); // true = Somente leitura
   String ssid = prefs.getString("ssid", "");
   String pass = prefs.getString("pass", "");
@@ -28,6 +32,7 @@ bool iniciar_wifi_salvo() {
 
   if(ssid == "") return false;
 
+  LOG_INFO("WIFI", "Tentando conectar com Wi-Fi salvo: %s", ssid);
   // --- O SEGREDO ESTÁ NESTAS 3 LINHAS ---
   WiFi.mode(WIFI_STA);    // Garante que o chip está operando como Estação (Cliente)
   WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
@@ -41,13 +46,13 @@ bool iniciar_wifi_salvo() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Conectado com sucesso! Carregando 1º cluster salvo...");
+    LOG_INFO("WIFI", "Conectado com sucesso! Carregando 1º cluster salvo...");
     atualizaClusterGlobal(0);
     return true;
   } else {
     WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
     delay(200);             // Dá um respiro de 100ms para o hardware limpar o estado
-    Serial.println("!!!!! Falha ao conectar.");
+    LOG_ERROR("WIFI", "Falha ao conectar!");
     return false;
   }
 }
@@ -57,6 +62,9 @@ void atualizaClusterGlobal(int id) {
   String msg = "Cluster nao selecionado!";
   if (cluster.http != "") {
     msg = "Cluster: " + cluster.http + ':' + cluster.port;
+    // LOG_INFO("CLUSTER", "Usando %s", msg.c_str());
+  // } else {
+    // LOG_ERROR("CLUSTER", "Não selecionado.");
   }
 
   // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
@@ -89,19 +97,22 @@ void esquecer_wifi() {
 }
 
 void exibir_spinner() {
-  Serial.println("Exibindo spinner...");
-  bsp_display_lock(1000);
+  // Serial.println("Exibindo spinner...");
+  // bsp_display_lock(1000);
   lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
-  lv_refr_now(NULL);
-  bsp_display_unlock();
+  // lv_refr_now(NULL);
+  // bsp_display_unlock();
 }
 
 void ocultar_spinner() {
-  bsp_display_lock(1000);
-  lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
-  lv_refr_now(NULL);
-  bsp_display_unlock();
-  Serial.println("Ocultando spinner...");
+  if(bsp_display_lock(0)) {
+    lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
+    lv_refr_now(NULL);
+    bsp_display_unlock();
+  } else {
+    LOG_ERROR("SPINNER", "Erro ao ocultar");
+  }
+  // Serial.println("Ocultando spinner...");
 }
 
 
@@ -138,6 +149,7 @@ int carregarClusters(Cluster itens[]) {
   DeserializationError error = deserializeJson(doc, jsonString);
   
   if (error) {
+    LOG_ERROR_1("CLUSTER", "Não há cluster salvo");
     return 0; // Retorna vazio se falhar ou não existir
   }
 
@@ -152,7 +164,7 @@ int carregarClusters(Cluster itens[]) {
     itens[i].token = arr[i]["token"].as<String>();
   }
 
-  Serial.printf("Carregados %d clusters da memória flash.\n", total);
+  LOG_INFO_1("CLUSTER", "Carregados %d clusters.", total);
   return total;
 }
 
@@ -189,11 +201,13 @@ Cluster pegarCluster(int index) {
   int total = carregarClusters(itens);
 
   if (index < 0 || index >= total) {
-    Serial.printf("Erro: Índice inválido! %d itens disponíveis.\n", total);
+    // Serial.printf("Erro: Índice inválido! %d itens disponíveis.\n", total);
+    LOG_ERROR_1("CLUSTER", "Erro: Índice inválido! %d itens disponíveis.", total);
     return {"", "", "", 0}; // Retorna um item vazio em caso de erro
   }
 
-  Serial.printf("Pegando cluster no índice [%d]: %s - %s:%d\n", index, itens[index].nome.c_str(), itens[index].http.c_str(), itens[index].port);
+  LOG_INFO_1("CLUSTER", "Usando [%d]: %s - %s:%d", index, itens[index].nome.c_str(), itens[index].http.c_str(), itens[index].port);
+  // Serial.printf("Pegando cluster no índice [%d]: %s - %s:%d\n", index, itens[index].nome.c_str(), itens[index].http.c_str(), itens[index].port);
   return itens[index];
 }
 

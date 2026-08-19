@@ -15,6 +15,7 @@
 #include "db_cluster.h"
 #include "requisicao.h"
 #include "db_docker.h"
+#include "logger.h"
 
 lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
@@ -33,9 +34,8 @@ void setup() {
 
   Serial.begin(115200);
   delay(1000);
-  Serial.println(title + " start");
+  LOG_WARN(title, "INICIALIZANDO...");
 
-  Serial.println("Inicializando...");
   lv_log_register_print_cb(cb_log);
 
   bsp_display_cfg_t cfg = {
@@ -49,7 +49,7 @@ void setup() {
   bsp_display_backlight_on();
   bsp_display_brightness_set(25);
 
-  Serial.println("> Criando UI");
+  LOG_WARN(title, "Criando UI...");
   /* Lock the mutex due to the LVGL APIs are not thread-safe */
   bsp_display_lock(0);
 
@@ -71,10 +71,10 @@ void setup() {
 
   focus_tab(objects.tv_config, objects.tab_outras);
   if (iniciar_wifi_salvo()) {
-    db_home_conectado();
+    db_conectado();
     focus_tab(objects.tv_dashboard, objects.tab_home);
   } else {
-    db_home_desconectado();
+    db_desconectado();
 
     focus_tab(objects.tv_dashboard, objects.tab_config, false);
     focus_tab(objects.tv_config, objects.tab_wifi);
@@ -83,17 +83,23 @@ void setup() {
   /* Release the mutex */
   bsp_display_unlock();
 
-  Serial.println("### " + title + " INICIALIZADO! ###");
+  LOG_INFO(title, " INICIALIZADO!");
 }
 
-int contador = 0;
+int contador = -1;
 void loop() {
+  requisicoes_pendentes();
+  escanear_redes();
   delay(50);
-  contador++;
-  if(contador >= 200) {
-    contador = 0;
-    Serial.print(millis());
-    Serial.println(" - passou 10 segundos!");
+
+  //Defina como 0 para depurar
+  if(contador >= 0) {
+    contador++;
+    if(contador >= 1200) {
+      contador = 0;
+      Serial.print(millis());
+      Serial.println(" - passou 1 minuto!");
+    }
   }
 }
 
@@ -114,41 +120,43 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
 
   uint16_t aba_ativa = lv_tabview_get_tab_act(tabview);
   if (tabview == objects.tv_config) {
-    Serial.print("> tv_config - aba ");
-    // Serial.println(aba_ativa);
+    String tv = "tv_config";
     switch (aba_ativa) {
       case 0:
-        // O usuário acabou de abrir a aba HOME
-        Serial.println("HOME. Atualizando dados...");
+        LOG_INFO(tv, "Config selecionado");
         break;
 
       case 1:
-        // O usuário acabou de abrir a aba CONFIG
-        Serial.println("WIFI. Escaneando WiFi...");
-        tab_config_escanear_redes();
+        LOG_INFO(tv, "Wifi selecionado");
+        // escanear_redes();
+        exibir_spinner();
+        loopListaWifi = true;
         break;
     }
   } else if (tabview == objects.tv_dashboard) {
-    Serial.print("> tv_dashboard - aba ");
+    String tv = "tv_dashboard";
     switch (aba_ativa) {
+      case 0: //Home
+        LOG_INFO(tv, "Home selecionado");
+        break;
       case 1: //Cluster
-        Serial.println("Cluster");
-        lista_clusters();
+        LOG_INFO(tv, "Cluster selecionado");
+        lv_lista_clusters();
         break;
       case 2: //Docker
-        Serial.println("Docker");
+        LOG_INFO(tv, "Docker selecionado");
         /* code */
-        lista_containers();
+        lv_lista_containers();
         break;
       case 3: //Rede
-        Serial.println("Rede");
-        info_rede();
+        LOG_INFO(tv, "Rede selecionado");
+        lv_info_rede();
         break;
       case 4: //Alertas
-        Serial.println("Alertas");
+        LOG_INFO(tv, "Alertas selecionado");
         break;
       case 5: //Config
-        Serial.println("Config");
+        LOG_INFO(tv, "Config selecionado");
         break;
     }
   }
