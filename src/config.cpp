@@ -2,13 +2,21 @@
 #include <Preferences.h>
 #include "config.h"
 #include "ui/ui.h"
+#include <esp_bsp.h>
 
 Preferences prefs;
 Cluster cluster;
 
+// extern SemaphoreHandle_t lvgl_mutex; 
+
 const char* CLUSTER_NAMESPACE = "clusters";
 const char* CLUSTER_KEY = "json";
 const int MAX_CLUSTERS = 20;
+
+void showHeap(String msg) {
+  Serial.printf("**** %s: Heap Livre: %d bytes\n", msg, ESP.getFreeHeap());
+  Serial.printf("**** %s: Maior bloco livre: %d bytes\n", msg, ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
+}
 
 // Tenta conectar com o que está salvo
 bool iniciar_wifi_salvo() {
@@ -39,7 +47,7 @@ bool iniciar_wifi_salvo() {
   } else {
     WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
     delay(200);             // Dá um respiro de 100ms para o hardware limpar o estado
-    Serial.println("Falha ao conectar.");
+    Serial.println("!!!!! Falha ao conectar.");
     return false;
   }
 }
@@ -50,7 +58,13 @@ void atualizaClusterGlobal(int id) {
   if (cluster.http != "") {
     msg = "Cluster: " + cluster.http + ':' + cluster.port;
   }
+
+  // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
+  bsp_display_lock(1000);
   lv_label_set_text(objects.lb_cluster, msg.c_str());
+  bsp_display_unlock();
+    // xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
+  // }
 }
 
 // Salva e conecta (chamado pelo botão da aba Config)
@@ -76,13 +90,17 @@ void esquecer_wifi() {
 
 void exibir_spinner() {
   Serial.println("Exibindo spinner...");
+  bsp_display_lock(1000);
   lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
   lv_refr_now(NULL);
+  bsp_display_unlock();
 }
 
 void ocultar_spinner() {
+  bsp_display_lock(1000);
   lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
   lv_refr_now(NULL);
+  bsp_display_unlock();
   Serial.println("Ocultando spinner...");
 }
 

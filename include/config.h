@@ -11,8 +11,6 @@ struct Cluster {
 
 extern Cluster cluster;
 
-extern const char* CLUSTER_NAMESPACE;
-extern const char* CLUSTER_KEY;
 extern const int MAX_CLUSTERS;
 
 // Declaração das funções (implementadas abaixo)
@@ -32,3 +30,5 @@ bool salvar_e_conectar(String novo_ssid, String nova_senha);
 void esquecer_wifi();
 void exibir_spinner();
 void ocultar_spinner();
+
+void showHeap(String msg);

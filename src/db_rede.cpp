@@ -6,7 +6,6 @@ static void info_rede_cb(JsonDocument& doc);
 static String json_to_string(const JsonVariant& value);
 
 void info_rede() {
-  Serial.println("REDE aberta. Buscano info...");
   lv_label_set_text(objects.lb_download, "Download: ...");
   lv_label_set_text(objects.lb_upload, "Upload: ...");
   lv_label_set_text(objects.lb_ping, "Ping: ...");
@@ -15,9 +14,9 @@ void info_rede() {
 }
 
 static String json_to_string(const JsonVariant& value) {
-  Serial.println(value.as<String>());
+  // Serial.println(value.as<String>());
   if (value.isNull()) {
-    return String("NULO");
+    return String("(NULO)");
   }
 
   return String(value.as<String>());

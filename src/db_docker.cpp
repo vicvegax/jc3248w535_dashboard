@@ -1,6 +1,7 @@
 #include "ui/ui.h"
 #include "db_docker.h"
 #include "requisicao.h"
+#include <cstring>
 
 extern lv_style_t estilo_checked;
 
@@ -9,7 +10,15 @@ static void bt_cont_cb(lv_event_t *e);
 static void list_dockers_cb(JsonDocument& doc);
 
 void lista_containers() {
-  Serial.println("DOCKER aberta. Listando containers...");
+  uint32_t itens_atuais = lv_obj_get_child_cnt(objects.ls_cont);
+  for (uint32_t i = 0; i < itens_atuais; i++) {
+    lv_obj_t * item = lv_obj_get_child(objects.ls_cont, i);
+    void * user_data = lv_obj_get_user_data(item);
+    if (user_data != NULL) {
+      free(user_data);
+      lv_obj_set_user_data(item, NULL);
+    }
+  }
   lv_obj_clean(objects.ls_cont); 
   get("/containers", list_dockers_cb);
   requisicoes_pendentes();
@@ -34,8 +43,13 @@ static void list_dockers_cb(JsonDocument& doc) {
       
       // Adiciona o item no List de ativos. O segundo parâmetro pode ser um ícone (ex: LV_SYMBOL_PLAY)
       // lv_list_add_btn(objects.ls_cont_ativos, LV_SYMBOL_PLAY, buffer_texto);
-      char * id_armazenado = (char *)malloc(13);
-      strcpy(id_armazenado, id);
+      size_t id_tamanho = 64;
+      char * id_armazenado = (char *)malloc(id_tamanho);
+      if (id_armazenado == NULL) {
+        Serial.println("Erro: memoria insuficiente para armazenar ID do container.");
+        continue;
+      }
+      memcpy(id_armazenado, id, id_tamanho);
 
       lv_obj_t * btn = lv_list_add_btn(objects.ls_cont, NULL, buffer_texto);
       lv_obj_set_user_data(btn, (void *)id_armazenado);

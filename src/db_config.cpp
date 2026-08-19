@@ -14,10 +14,15 @@ extern "C" void action_resetar(lv_event_t *e) {
 void tab_config_escanear_redes() {
   exibir_spinner();  
   
-  int n = WiFi.scanNetworks();
+  int n = WiFi.scanNetworks(false, false, false, 300);
   String opcoes = "";
-  for (int i = 0; i < n; ++i) {
-      opcoes += WiFi.SSID(i) + "\n";
+  if (n >= 0) {
+    for (int i = 0; i < n; ++i) {
+        opcoes += WiFi.SSID(i) + "\n";
+    }
+    WiFi.scanDelete();
+  } else {
+    Serial.printf("Erro ao escanear redes Wi-Fi: %d\n", n);
   }
   
   lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
