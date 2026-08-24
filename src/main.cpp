@@ -86,7 +86,7 @@ void setup() {
   LOG_INFO(title, " INICIALIZADO!");
 }
 
-int contador = -1;
+int contador = 0;
 void loop() {
   requisicoes_pendentes();
   escanear_redes();
@@ -95,10 +95,12 @@ void loop() {
   //Defina como 0 para depurar
   if(contador >= 0) {
     contador++;
-    if(contador >= 1200) {
+    // if(contador >= 1200) {
+    if(contador >= 200) {
       contador = 0;
       Serial.print(millis());
-      Serial.println(" - passou 1 minuto!");
+      // Serial.println(" - passou 1 minuto!");
+      Serial.println(" - PING OK a cada 10 segundos!");
     }
   }
 }
