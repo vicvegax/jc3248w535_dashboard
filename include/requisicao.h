@@ -11,9 +11,9 @@ typedef void (*HttpCallback)(JsonDocument& doc);
 
 // Estrutura para agendar a requisição fora do loop do LVGL
 struct RequisicaoAgendada {
-    String url;
-    HttpCallback callback;
-    bool pendente;
+  String url;
+  HttpCallback callback;
+  bool pendente;
 };
 
 // Variável global para agendamento (será gerenciada no loop)

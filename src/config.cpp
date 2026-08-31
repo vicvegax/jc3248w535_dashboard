@@ -15,7 +15,7 @@ const char* CLUSTER_NAMESPACE = "clusters";
 const char* CLUSTER_KEY = "json";
 const int MAX_CLUSTERS = 20;
 
-void showHeap(String msg) {
+void showHeap() {
   // Serial.printf("**** %s: Heap Livre: %d bytes\n", msg, ESP.getFreeHeap());
   // Serial.printf("**** %s: Maior bloco livre: %d bytes\n", msg, ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
   if(ESP.getMinFreeHeap() < 100000) {
@@ -68,9 +68,12 @@ void atualizaClusterGlobal(int id) {
   }
 
   // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
-  bsp_display_lock(1000);
-  lv_label_set_text(objects.lb_cluster, msg.c_str());
-  bsp_display_unlock();
+  if(bsp_display_lock(100)) {
+    lv_label_set_text(objects.lb_cluster, msg.c_str());
+    bsp_display_unlock();
+} else {
+  LOG_ERROR("CLUSTER", "Erro liberando display.");
+}
     // xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
   // }
 }
@@ -97,22 +100,19 @@ void esquecer_wifi() {
 }
 
 void exibir_spinner() {
-  // Serial.println("Exibindo spinner...");
-  // bsp_display_lock(1000);
   lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
-  // lv_refr_now(NULL);
-  // bsp_display_unlock();
 }
 
 void ocultar_spinner() {
-  if(bsp_display_lock(0)) {
+  if(bsp_display_lock(150)) {
     lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_USER_1);
     lv_refr_now(NULL);
     bsp_display_unlock();
   } else {
+    lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_USER_1);
     LOG_ERROR("SPINNER", "Erro ao ocultar");
   }
-  // Serial.println("Ocultando spinner...");
 }
 
 
@@ -158,6 +158,7 @@ int carregarClusters(Cluster itens[]) {
   if (total > MAX_CLUSTERS) total = MAX_CLUSTERS;
 
   for (int i = 0; i < total; i++) {
+    itens[i].id = i;
     itens[i].nome = arr[i]["nome"].as<String>();
     itens[i].http = arr[i]["http"].as<String>();
     itens[i].port = arr[i]["port"].as<int>();
@@ -177,6 +178,7 @@ void adicionarCluster(Cluster novoItem) {
     return;
   }
 
+  novoItem.id = total;
   itens[total] = novoItem; // Insere no final
   salvarClusters(itens, total + 1);
   Serial.println("Cluster adicionado com sucesso!");
@@ -203,7 +205,7 @@ Cluster pegarCluster(int index) {
   if (index < 0 || index >= total) {
     // Serial.printf("Erro: Índice inválido! %d itens disponíveis.\n", total);
     LOG_ERROR_1("CLUSTER", "Erro: Índice inválido! %d itens disponíveis.", total);
-    return {"", "", "", 0}; // Retorna um item vazio em caso de erro
+    return {-1, "", "", "", 0}; // Retorna um item vazio em caso de erro
   }
 
   LOG_INFO_1("CLUSTER", "Usando [%d]: %s - %s:%d", index, itens[index].nome.c_str(), itens[index].http.c_str(), itens[index].port);

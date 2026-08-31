@@ -8,7 +8,7 @@
 RequisicaoAgendada req_atual = {"", NULL, false};
 
 void get(String path, HttpCallback callback_processamento) {
-  showHeap("ANTES GET");
+  // showHeap();//"ANTES GET");
   exibir_spinner();
 
   // Apenas agenda a requisição para o loop principal executar fora do LVGL
@@ -25,7 +25,7 @@ void requisicoes_pendentes() {
 
   if (WiFi.status() != WL_CONNECTED) {
     //Serial.println("!!!!!!! Erro: Wi-Fi desconectado.");
-    showHeap("DEPOIS GET");
+    // showHeap();//"DEPOIS GET");
     LOG_ERROR("REQUISICAO", "Wifi Desconectado");
     ocultar_spinner();
     return;
@@ -50,12 +50,12 @@ void requisicoes_pendentes() {
     
     // Se o JSON for válido e houver uma função cadastrada, envia os dados
     if (!error && req_atual.callback != NULL) {
-      if (bsp_display_lock(1000)) {
+      if (bsp_display_lock(100)) {
         LOG_INFO("REQUISICAO", "Dados recebidos. Processando callback...");
         req_atual.callback(doc);
         bsp_display_unlock();
       } else {
-        LOG_ERROR("REQUISICAO", "Erro: nao foi possivel obter o lock do LVGL.");
+        LOG_ERROR("REQUISICAO", "Nao foi possivel obter o lock do LVGL.");
       }
 
     } else if (error) {
@@ -65,7 +65,7 @@ void requisicoes_pendentes() {
     LOG_ERROR("REQUISICAO", "Erro HTTP: %d", httpCode);
   }
   http.end();
-  showHeap("DEPOIS GET");
+  // showHeap();//"DEPOIS GET");
   ocultar_spinner();
 
 }

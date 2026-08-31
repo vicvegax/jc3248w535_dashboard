@@ -18,6 +18,8 @@ extern void action_show_form_cluster(lv_event_t * e);
 extern void action_fechar_form_cluster(lv_event_t * e);
 extern void action_salvar_form_cluster(lv_event_t * e);
 extern void action_del_cluster(lv_event_t * e);
+extern void action_mudar_brilho(lv_event_t * e);
+extern void action_atualizar_aba(lv_event_t * e);
 
 #ifdef __cplusplus
 }

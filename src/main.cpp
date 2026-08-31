@@ -17,8 +17,30 @@
 #include "db_docker.h"
 #include "logger.h"
 
+#define DEBUG_TASKS() \
+    Serial.printf("Stack livre Loop: %d | Stack livre GUI: %d\n", \
+    uxTaskGetStackHighWaterMark(NULL), \
+    uxTaskGetStackHighWaterMark(xTaskGetHandle("LVGL task"))) // ou o nome que o bsp usa
+
+
+#define BLINK_LED
+#define LED_PIN     (17)
+#define BATT_PIN    (5)
+#define REFERENCIA_V (3.3)       // Tensão de referência do ADC
+#define RESOLUCAO_ADC (4095.0)       // 12-bits de resolução (0 a 4095)
+#define FATOR_DIVISOR (1.75)      // Divisor de tensão físico na placa (proporção 2:1)
+#define TENSAO_MAX (4.15)
+#define TENSAO_MIN (3.40)
+char bateria[8];
+
+uint32_t ultima_bateria;
+uint32_t ultimo_heartbeat;
+static int ler_bateria();
+static int ler_bateria_otimizada();
+
 lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
+static uint16_t ultima_aba_aberta = -1;
 
 void cb_log(const char* buf) {
   Serial.println("****GERADO PELO CALLBACK****");
@@ -27,31 +49,32 @@ void cb_log(const char* buf) {
 }
 
 void setup() {
-  // ledcAttach(1, 5000, 8);
-  
-   // delay(1000);
   String title = "Dashboard";
 
   Serial.begin(115200);
-  delay(1000);
-  LOG_WARN(title, "INICIALIZANDO...");
+  LOG_INFO(title, "INICIALIZANDO...");
 
   lv_log_register_print_cb(cb_log);
 
+  //task_affinity = 1 <<<<<<<<< FIXA NO CORE 1 (LOOP)
   bsp_display_cfg_t cfg = {
-    .lvgl_port_cfg = ESP_LVGL_PORT_INIT_CONFIG(),
+    .lvgl_port_cfg = {
+      .task_priority = 4,
+      .task_stack = 16384,
+      .task_affinity = 1, //FIXADO NO CORE 1 (LOOP)
+      .task_max_sleep_ms = 500,
+      .timer_period_ms = 5,
+    },
     .buffer_size = EXAMPLE_LCD_QSPI_H_RES * EXAMPLE_LCD_QSPI_V_RES,
     .rotate = LV_DISP_ROT_90,
   };
 
   bsp_display_start_with_config(&cfg);
   // // Inicia com brilho máximo (255)
-  bsp_display_backlight_on();
-  bsp_display_brightness_set(25);
 
-  LOG_WARN(title, "Criando UI...");
+  LOG_INFO(title, "Criando UI...");
   /* Lock the mutex due to the LVGL APIs are not thread-safe */
-  bsp_display_lock(0);
+  bsp_display_lock(0); //SETUP
 
   ui_init();
 
@@ -80,29 +103,125 @@ void setup() {
     focus_tab(objects.tv_config, objects.tab_wifi);
   }
 
+  lv_label_set_text(objects.lb_bateria, "?%");
+
   /* Release the mutex */
   bsp_display_unlock();
+  bsp_display_backlight_on();
+  bsp_display_brightness_set(25);
 
-  LOG_INFO(title, " INICIALIZADO!");
+  #ifdef BLINK_LED
+    pinMode(LED_PIN, OUTPUT);
+  #endif
+  ultima_bateria = millis() - 25000;
+  ultimo_heartbeat = 0;
+  LOG_INFO(title, "INICIALIZADO!");
 }
 
-int contador = 0;
 void loop() {
   requisicoes_pendentes();
   escanear_redes();
   delay(50);
 
   //Defina como 0 para depurar
-  if(contador >= 0) {
-    contador++;
-    // if(contador >= 1200) {
-    if(contador >= 200) {
-      contador = 0;
-      Serial.print(millis());
-      // Serial.println(" - passou 1 minuto!");
-      Serial.println(" - PING OK a cada 10 segundos!");
+  if((millis() - ultimo_heartbeat) >= 10000) {
+    ultimo_heartbeat = millis();
+    if (lv_obj_has_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN)) {
+      ocultar_spinner();
+    }
+    //DEBUG_TASKS();
+    showHeap();
+
+    // LOG_PING("HEARTBEAT", "Testando o LOOP principal!");
+    #ifdef BLINK_LED
+      digitalWrite(LED_PIN, HIGH);
+      delay(50);
+      digitalWrite(LED_PIN, LOW);
+    #endif
+  }
+
+  int bateria_pct = ler_bateria_otimizada();
+  if((millis() - ultima_bateria) >= 30000) {
+    ultima_bateria = millis();
+    if (!lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
+      LOG_WARN("BATERIA", "Teclado aberto; pulando atualização da label por 10 segundos.");
+      ultima_bateria -= 20000; //hack para aguardar 1 segundo e tantar de novo
+      return;
+    }
+
+    LOG_INFO("BATT", "Nivel atual: %d%%", bateria_pct);
+
+    snprintf(bateria, sizeof(bateria), "%d%%", bateria_pct);
+
+    if(bsp_display_lock(150)) {
+      lv_label_set_text(objects.lb_bateria, bateria);
+      bsp_display_unlock();
+    } else {
+      ultima_bateria -= 20000; //hack para aguardar 1 segundo e tantar de novo
+      LOG_ERROR("BATERIA", "LVGL muito ocupado; pulando atualização por 10 segundos.");
+      // Serial.printf("**** Heap Livre: %d bytes\n", ESP.getFreeHeap());
+      // Serial.printf("**** Maior bloco livre: %d bytes\n", ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
     }
   }
+  
+}
+
+static int ler_bateria_otimizada() {
+  // static mantém o valor da leitura anterior guardado na memória
+  static float valorFiltrado = -1.0; 
+  
+  // Lê o ADC apenas UMA vez (sem travar com laço for ou delays)
+  int leituraBruta = analogRead(BATT_PIN); 
+  
+  // Converte para tensão real da célula (fórmula que já usamos)
+  float voltagemAtual = (leituraBruta * REFERENCIA_V / RESOLUCAO_ADC) * FATOR_DIVISOR;
+  //Serial.println(voltagemAtual);
+  // Inicialização na primeira corrida
+  if (valorFiltrado < 0.0) {
+      valorFiltrado = voltagemAtual;
+      return valorFiltrado;
+  }
+
+  // Fator de suavização (Alfa). Quanto MENOR, mais estável e lento o filtro fica.
+  // 0.05 significa que a nova leitura tem peso de 5% e o histórico tem peso de 95%
+  const float ALFA = 0.03; 
+  
+  // Aplica a fórmula do filtro EMA
+  valorFiltrado = (ALFA * voltagemAtual) + ((1.0 - ALFA) * valorFiltrado);
+
+  // LOG_INFO("BATERIA", "RAW: %f, VPin: %f, VBat: %f", mediaADC, tensao_pino, tensao_bateria);
+
+  if (valorFiltrado >= TENSAO_MAX) return 100;
+  if (valorFiltrado <= TENSAO_MIN) return 0;
+
+  // Mapeamento linear básico (para precisão total seria necessária uma tabela lookup)
+  return (int)((valorFiltrado - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
+}
+
+static int ler_bateria() {
+  long somaAmostras = 0;
+  const int numeroAmostras = 50;
+
+  // Leitura múltipla para reduzir ruídos gerados pela oscilação do WiFi/Tela
+  for (int i = 0; i < numeroAmostras; i++) {
+      somaAmostras += analogRead(BATT_PIN);
+      delay(2);
+  }
+  float mediaADC = (float)somaAmostras / numeroAmostras;
+
+  // Converte o valor analógico bruto para a voltagem lida no pino do ESP32
+  float tensao_pino = (mediaADC * REFERENCIA_V) / RESOLUCAO_ADC;
+
+  // Multiplica pelo fator do divisor para descobrir a voltagem real da célula de Lítio
+  float tensao_bateria = tensao_pino * FATOR_DIVISOR;
+
+  LOG_INFO("BATERIA", "RAW: %f, VPin: %f, VBat: %f", mediaADC, tensao_pino, tensao_bateria);
+
+  if (tensao_bateria >= TENSAO_MAX) return 100;
+  if (tensao_bateria <= TENSAO_MIN) return 0;
+
+  // Mapeamento linear básico (para precisão total seria necessária uma tabela lookup)
+  return (int)((tensao_bateria - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
 }
 
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event) {
@@ -122,6 +241,7 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
 
   uint16_t aba_ativa = lv_tabview_get_tab_act(tabview);
   if (tabview == objects.tv_config) {
+    //ultima_aba_aberta = -1;
     String tv = "tv_config";
     switch (aba_ativa) {
       case 0:
@@ -137,6 +257,7 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
     }
   } else if (tabview == objects.tv_dashboard) {
     String tv = "tv_dashboard";
+    ultima_aba_aberta = aba_ativa;
     switch (aba_ativa) {
       case 0: //Home
         LOG_INFO(tv, "Home selecionado");
@@ -164,3 +285,11 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
   }
 }
 
+extern "C" void action_atualizar_aba(lv_event_t *e) {
+  lv_obj_t * tab_btns = lv_event_get_target(e);
+  uint16_t aba_clicada = lv_btnmatrix_get_selected_btn(tab_btns);
+
+  if(aba_clicada != ultima_aba_aberta) {
+    // action_mudanca_aba(e);
+  }
+}

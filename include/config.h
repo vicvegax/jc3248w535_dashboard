@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 struct Cluster {
+  int id;
   String nome;
   String http;
   String token;
@@ -32,4 +33,4 @@ void esquecer_wifi();
 void exibir_spinner();
 void ocultar_spinner();
 
-void showHeap(String msg);
+void showHeap();

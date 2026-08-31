@@ -38,6 +38,15 @@ void create_screen_main() {
             lv_label_set_text_static(obj, "Mostra se esta conectado");
         }
         {
+            // lb_cluster
+            lv_obj_t *obj = lv_label_create(parent_obj);
+            objects.lb_cluster = obj;
+            lv_obj_set_pos(obj, -4, 9);
+            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+            lv_obj_set_style_align(obj, LV_ALIGN_TOP_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "Cluster: 192.198.199.199");
+        }
+        {
             // tv_dashboard
             lv_obj_t *obj = lv_tabview_create(parent_obj, LV_DIR_LEFT, 90);
             objects.tv_dashboard = obj;
@@ -134,12 +143,21 @@ void create_screen_main() {
                             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
                             lv_label_set_text_static(obj, "RAM");
                         }
+                        {
+                            // lb_cluster_ativo
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_cluster_ativo = obj;
+                            lv_obj_set_pos(obj, 189, 100);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_label_set_text_static(obj, "ATIVO?");
+                        }
                     }
                 }
                 {
                     // tab_docker
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Docker");
                     objects.tab_docker = obj;
+                    lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
                     lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
                     {
                         lv_obj_t *parent_obj = obj;
@@ -178,6 +196,7 @@ void create_screen_main() {
                     // tab_rede
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Rede");
                     objects.tab_rede = obj;
+                    lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
                     {
                         lv_obj_t *parent_obj = obj;
                         {
@@ -233,8 +252,24 @@ void create_screen_main() {
                                     {
                                         lv_obj_t *parent_obj = obj;
                                         {
+                                            lv_obj_t *obj = lv_label_create(parent_obj);
+                                            lv_obj_set_pos(obj, 116, 35);
+                                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                                            lv_label_set_text_static(obj, "Brilho da Tela");
+                                        }
+                                        {
+                                            // sl_brilho
+                                            lv_obj_t *obj = lv_slider_create(parent_obj);
+                                            objects.sl_brilho = obj;
+                                            lv_obj_set_pos(obj, 8, 63);
+                                            lv_obj_set_size(obj, 332, 31);
+                                            lv_slider_set_range(obj, 5, 100);
+                                            lv_slider_set_value(obj, 40, LV_ANIM_OFF);
+                                            lv_obj_add_event_cb(obj, action_mudar_brilho, LV_EVENT_VALUE_CHANGED, (void *)0);
+                                        }
+                                        {
                                             lv_obj_t *obj = lv_btn_create(parent_obj);
-                                            lv_obj_set_pos(obj, 97, 9);
+                                            lv_obj_set_pos(obj, 97, 144);
                                             lv_obj_set_size(obj, 140, 50);
                                             lv_obj_add_event_cb(obj, action_resetar, LV_EVENT_PRESSED, (void *)0);
                                             {
@@ -369,13 +404,13 @@ void create_screen_main() {
             lv_obj_set_style_align(obj, LV_ALIGN_DEFAULT, LV_PART_MAIN | LV_STATE_DEFAULT);
         }
         {
-            // lb_cluster
+            // lb_bateria
             lv_obj_t *obj = lv_label_create(parent_obj);
-            objects.lb_cluster = obj;
-            lv_obj_set_pos(obj, -4, 9);
+            objects.lb_bateria = obj;
+            lv_obj_set_pos(obj, 0, 9);
             lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-            lv_obj_set_style_align(obj, LV_ALIGN_TOP_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
-            lv_label_set_text_static(obj, "Cluster: 192.198.199.199");
+            lv_obj_set_style_align(obj, LV_ALIGN_TOP_MID, LV_PART_MAIN | LV_STATE_DEFAULT);
+            lv_label_set_text_static(obj, "BATERIA");
         }
     }
     

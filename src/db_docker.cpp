@@ -2,11 +2,12 @@
 #include "db_docker.h"
 #include "requisicao.h"
 #include <cstring>
+#include <logger.h>
 
 extern lv_style_t estilo_checked;
 
-static void cont_stat_cb(JsonDocument& doc);
-static void bt_cont_cb(lv_event_t *e);
+static void lv_info_container_cb(JsonDocument& doc);
+static void lv_bt_cont_cb(lv_event_t *e);
 static void lv_lista_dockers_cb(JsonDocument& doc);
 
 void lv_lista_containers() {
@@ -48,7 +49,7 @@ static void lv_lista_dockers_cb(JsonDocument& doc) {
       size_t id_tamanho = strlen(id) + 1;
       char * id_armazenado = (char *)malloc(id_tamanho);
       if (id_armazenado == NULL) {
-        Serial.println("Erro: memoria insuficiente para armazenar ID do container.");
+        LOG_ERROR("DOCKER", "Erro: memoria insuficiente para armazenar ID do container.");
         continue;
       }
       memcpy(id_armazenado, id, id_tamanho);
@@ -56,7 +57,7 @@ static void lv_lista_dockers_cb(JsonDocument& doc) {
       lv_obj_t * btn = lv_list_add_btn(objects.ls_cont, NULL, buffer_texto);
       lv_obj_set_user_data(btn, (void *)id_armazenado);
       lv_obj_add_flag(btn, LV_OBJ_FLAG_CHECKABLE);
-      lv_obj_add_event_cb(btn, bt_cont_cb, LV_EVENT_CLICKED, NULL);
+      lv_obj_add_event_cb(btn, lv_bt_cont_cb, LV_EVENT_CLICKED, NULL);
       lv_obj_add_style(btn, &estilo_checked, LV_STATE_CHECKED);
     }
   }
@@ -79,7 +80,7 @@ static void lv_lista_dockers_cb(JsonDocument& doc) {
   }
 }
 
-static void bt_cont_cb(lv_event_t *e) {
+static void lv_bt_cont_cb(lv_event_t *e) {
     lv_event_code_t code = lv_event_get_code(e);
     lv_obj_t * obj = lv_event_get_target(e);
     if(code == LV_EVENT_CLICKED) {
@@ -99,9 +100,9 @@ static void bt_cont_cb(lv_event_t *e) {
       char * container_id = (char *)lv_obj_get_user_data(obj);
       if (container_id != NULL) {
           // PRONTO! Dados isolados perfeitamente com zero processamento de string
-          get("/container/" + String(container_id), cont_stat_cb);
-          Serial.printf("\n[DOCKER] Clique detectado de forma nativa:\n");
-          Serial.printf("ID do Container:   %s\n", container_id);
+          get("/container/" + String(container_id), lv_info_container_cb);
+          // Serial.printf("\n[DOCKER] Clique detectado de forma nativa:\n");
+          // Serial.printf("ID do Container:   %s\n", container_id);
           
           // Aqui você já pode chamar sua API para dar Start/Stop usando o ID puro
           // ex: enviar_comando_api(container_id, "stop");
@@ -110,7 +111,7 @@ static void bt_cont_cb(lv_event_t *e) {
     }
 }
 
-static void cont_stat_cb(JsonDocument& doc) {
+static void lv_info_container_cb(JsonDocument& doc) {
   String id_container = doc["containerId"].as<String>();
 
   // VARIÁVEIS DE CPU (Acessando o sub-objeto "cpu")
@@ -124,9 +125,9 @@ static void cont_stat_cb(JsonDocument& doc) {
   lv_label_set_text_fmt(objects.lb_cont_cpu, "CPU\n%s", cpu_percent.c_str());
   lv_label_set_text_fmt(objects.lb_cont_ram, "RAM\n%s", ram_usage.c_str());
 
-  Serial.println("\n--- MÉTRICAS DO CONTAINER ---");
-  Serial.printf("ID: %s\n", id_container.c_str());
-  Serial.printf("CPU Uso: %s (CPUs Disponiveis: %d)\n", cpu_percent.c_str(), cpu_online);
-  Serial.printf("RAM Uso: %s de %s (%s)\n", ram_usage.c_str(), ram_limit.c_str(), ram_percent.c_str());
-  Serial.println("-----------------------------");
+  // Serial.println("--- MÉTRICAS DO CONTAINER ---");
+  // Serial.printf("ID: %s\n", id_container.c_str());
+  // Serial.printf("CPU Uso: %s (CPUs Disponiveis: %d)\n", cpu_percent.c_str(), cpu_online);
+  // Serial.printf("RAM Uso: %s de %s (%s)\n", ram_usage.c_str(), ram_limit.c_str(), ram_percent.c_str());
+  // Serial.println("-----------------------------");
 }

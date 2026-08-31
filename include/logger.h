@@ -5,6 +5,7 @@
 
 // Cores ANSI
 #define LOG_COLOR_RESET   "\033[0m"
+#define LOG_COLOR_PING    "\033[34m" // Verde
 #define LOG_COLOR_INFO    "\033[32m" // Verde
 #define LOG_COLOR_WARN    "\033[33m" // Amarelo
 #define LOG_COLOR_ERROR   "\033[31m" // Vermelho
@@ -25,6 +26,8 @@
 // ==========================================
 // NÍVEL 0 (Sem indentação - Início de evento)
 // ==========================================
+#define LOG_PING(tag, fmt, ...)  LOG_BASE(LOG_COLOR_PING,  "PING", 0, tag, fmt, ##__VA_ARGS__)
+
 #define LOG_INFO(tag, fmt, ...)  LOG_BASE(LOG_COLOR_INFO,  "INFO", 0, tag, fmt, ##__VA_ARGS__)
 #define LOG_WARN(tag, fmt, ...)  LOG_BASE(LOG_COLOR_WARN,  "WARN", 0, tag, fmt, ##__VA_ARGS__)
 #define LOG_ERROR(tag, fmt, ...) LOG_BASE(LOG_COLOR_ERROR, "ERRO", 0, tag, fmt, ##__VA_ARGS__)

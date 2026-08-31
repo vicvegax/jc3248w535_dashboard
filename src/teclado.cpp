@@ -4,9 +4,9 @@
 
 #define ALTURA_TECLADO     160 
 #define TV_DASHBOARD_OPENED   284
-#define TV_DASHBOARD_CLOSED   TV_DASHBOARD_OPENED - ALTURA_TECLADO
+#define TV_DASHBOARD_CLOSED   (TV_DASHBOARD_OPENED - ALTURA_TECLADO)
 #define TV_CONFIG_OPENED   265
-#define TV_CONFIG_CLOSED   TV_CONFIG_OPENED - ALTURA_TECLADO
+#define TV_CONFIG_CLOSED   (TV_CONFIG_OPENED - ALTURA_TECLADO)
 
 
 // Função auxiliar interna para tratar o fechamento do teclado
@@ -28,7 +28,8 @@ static void fechar_teclado_event_cb(lv_event_t * e) {
       lv_obj_clear_state(ta, LV_STATE_FOCUSED);
       
       // Isso garante que o próximo clique seja computado como um NOVO foco, reabrindo o teclado.
-      lv_group_focus_obj(NULL); 
+      lv_keyboard_set_textarea(objects.keyboard_1, NULL); // Desvincula o teclado com segurança
+      // lv_group_focus_obj(NULL); 
     }
   }
 }
@@ -62,7 +63,6 @@ extern "C" void action_set_keyboard(lv_event_t *e) {
   
   // 4. Adiciona um evento ao próprio teclado para saber quando o usuário terminou
   // Usamos lv_obj_remove_event_cb para evitar adicionar o mesmo evento múltiplas vezes
-  lv_obj_remove_event_cb(objects.keyboard_1, fechar_teclado_event_cb);
   lv_obj_remove_event_cb(objects.keyboard_1, fechar_teclado_event_cb);
   lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_READY, NULL);
   lv_obj_add_event_cb(objects.keyboard_1, fechar_teclado_event_cb, LV_EVENT_CANCEL, NULL);

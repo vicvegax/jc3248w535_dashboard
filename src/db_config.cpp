@@ -7,6 +7,7 @@
 #include <Esp.h>
 #include <esp_bsp.h>
 #include "logger.h"
+#include <display.h>
 
 extern "C" void action_resetar(lv_event_t *e) {
     // TODO: Implement action resetar here
@@ -19,10 +20,10 @@ void escanear_redes() {
   //exibir_spinner();  
   
   int n = WiFi.scanNetworks(false, false, false, 300);
-  String opcoes = "";
+  String wifi_opcoes = "";
   if (n >= 0) {
     for (int i = 0; i < n; ++i) {
-        opcoes += WiFi.SSID(i) + "\n";
+      wifi_opcoes += WiFi.SSID(i) + "\n";
     }
     WiFi.scanDelete();
     LOG_INFO_1("WIFI", "Localizado %d redes", n);
@@ -30,8 +31,8 @@ void escanear_redes() {
     LOG_ERROR_1("WIFI", "Erro ao escanear redes: %d", n);
   }
   
-  if(bsp_display_lock(0)) {
-    lv_dropdown_set_options(objects.ls_wifi, opcoes.c_str());
+  if(bsp_display_lock(150)) {
+    lv_dropdown_set_options(objects.ls_wifi, wifi_opcoes.c_str());
     bsp_display_unlock();
   } else {
     LOG_ERROR("CONFIG", "Erro lock");
@@ -41,14 +42,14 @@ void escanear_redes() {
 
 // 1. Crie esta pequena função logo ACIMA da sua action
 static void ir_para_home_async(void * param) {
-    // Essa função vai rodar com segurança fora do evento de clique!
-    lv_obj_t * tab_btns = lv_tabview_get_tab_btns(objects.tv_dashboard);
-    
-    // Libera os botões com segurança
-    lv_btnmatrix_clear_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED);
-    
-    // Troca a aba
-    lv_tabview_set_act(objects.tv_dashboard, 0, LV_ANIM_OFF);
+  // Essa função vai rodar com segurança fora do evento de clique!
+  lv_obj_t * tab_btns = lv_tabview_get_tab_btns(objects.tv_dashboard);
+  
+  // Libera os botões com segurança
+  lv_btnmatrix_clear_btn_ctrl(tab_btns, 1, LV_BTNMATRIX_CTRL_DISABLED);
+  
+  // Troca a aba
+  lv_tabview_set_act(objects.tv_dashboard, 0, LV_ANIM_OFF);
 }
 
 // Ação gerada pelo EEZ Studio ao clicar no botão "OK Conectar"
@@ -94,4 +95,11 @@ extern "C" void action_mostrar_senha(lv_event_t *e) {
   // TODO: Implement action mostrar_senha here}
   lv_obj_t * cb = lv_event_get_target(e);
   lv_textarea_set_password_mode(objects.ed_wifi_senha, !lv_obj_has_state(cb, LV_STATE_CHECKED));
+}
+
+extern "C" void action_mudar_brilho(lv_event_t *e) {
+  // TODO: Implement action mudar_brilho here
+  lv_obj_t * slider = lv_event_get_target(e);
+
+  bsp_display_brightness_set((int)lv_slider_get_value(slider));
 }

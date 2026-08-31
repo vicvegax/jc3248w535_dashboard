@@ -7,6 +7,11 @@ extern lv_style_t estilo_checked;
 
 extern "C" void action_del_cluster(lv_event_t *e) {
     // TODO: Implement action del_cluster here
+    if(cluster.id >= 0) {
+      deletarCluster(cluster.id);
+      atualizaClusterGlobal(-1);
+      lv_lista_clusters();
+    }
 }
 
 extern "C" void action_show_form_cluster(lv_event_t *e) {
@@ -28,6 +33,9 @@ void lv_lista_clusters() {
     lv_obj_add_event_cb(btn, bt_cluster_cb, LV_EVENT_CLICKED, NULL);
     // Ao criar cada botão dentro do 'for', aplique o estilo:
     lv_obj_add_style(btn, &estilo_checked, LV_STATE_CHECKED);
+    if(i == cluster.id) {
+      lv_obj_add_state(btn, LV_STATE_CHECKED);
+    }
   }
 }
 

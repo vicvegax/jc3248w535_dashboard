@@ -20,6 +20,7 @@ typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *form_cluster;
     lv_obj_t *lb_conectado;
+    lv_obj_t *lb_cluster;
     lv_obj_t *tv_dashboard;
     lv_obj_t *tab_home;
     lv_obj_t *tab_cluster;
@@ -30,6 +31,7 @@ typedef struct _objects_t {
     lv_obj_t *lb_cluster_temp;
     lv_obj_t *lb_cluster_cpu;
     lv_obj_t *lb_cluster_ram;
+    lv_obj_t *lb_cluster_ativo;
     lv_obj_t *tab_docker;
     lv_obj_t *ls_cont;
     lv_obj_t *lb_cont_cpu;
@@ -42,6 +44,7 @@ typedef struct _objects_t {
     lv_obj_t *tab_config;
     lv_obj_t *tv_config;
     lv_obj_t *tab_outras;
+    lv_obj_t *sl_brilho;
     lv_obj_t *tab_wifi;
     lv_obj_t *ls_wifi;
     lv_obj_t *ed_wifi_senha;
@@ -51,7 +54,7 @@ typedef struct _objects_t {
     lv_obj_t *pn_spinner;
     lv_obj_t *spinner_1;
     lv_obj_t *keyboard_1;
-    lv_obj_t *lb_cluster;
+    lv_obj_t *lb_bateria;
     lv_obj_t *ed_cluster_http;
     lv_obj_t *ed_cluster_port;
     lv_obj_t *ed_cluster_nome;
