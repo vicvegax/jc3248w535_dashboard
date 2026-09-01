@@ -593,6 +593,8 @@ static void lvgl_port_touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *
         bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_ctx->handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
 
         if (touchpad_pressed && touchpad_cnt > 0) {
+            if (touchpad_x[0] >= 480) touchpad_x[0] = 479;
+            if (touchpad_y[0] >= 320) touchpad_y[0] = 319;
             data->point.x = touchpad_x[0];
             data->point.y = touchpad_y[0];
             data->state = LV_INDEV_STATE_PRESSED;

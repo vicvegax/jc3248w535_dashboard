@@ -24,19 +24,21 @@
 
 
 #define BLINK_LED
-#define LED_PIN     (17)
-#define BATT_PIN    (5)
-#define REFERENCIA_V (3.3)       // Tensão de referência do ADC
+#define LED_PIN         (17)
+#define BATT_PIN         (5)
+#define REFERENCIA_V     (3.3)       // Tensão de referência do ADC
 #define RESOLUCAO_ADC (4095.0)       // 12-bits de resolução (0 a 4095)
-#define FATOR_DIVISOR (1.75)      // Divisor de tensão físico na placa (proporção 2:1)
-#define TENSAO_MAX (4.15)
-#define TENSAO_MIN (3.40)
+#define FATOR_DIVISOR    (1.77)      // Divisor de tensão físico na placa (proporção 2:1)
+#define TENSAO_MAX       (4.15)
+#define TENSAO_MIN       (3.15)
+#define ALFA             (0.03)
+
 char bateria[8];
 
 uint32_t ultima_bateria;
 uint32_t ultimo_heartbeat;
-static int ler_bateria();
-static int ler_bateria_otimizada();
+static float ler_bateria_bruta();
+static int ler_bateria_suave();
 
 lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
@@ -113,7 +115,7 @@ void setup() {
   #ifdef BLINK_LED
     pinMode(LED_PIN, OUTPUT);
   #endif
-  ultima_bateria = millis() - 25000;
+  ultima_bateria = millis() - 20000;
   ultimo_heartbeat = 0;
   LOG_INFO(title, "INICIALIZADO!");
 }
@@ -140,16 +142,18 @@ void loop() {
     #endif
   }
 
-  int bateria_pct = ler_bateria_otimizada();
+  ler_bateria_bruta();
   if((millis() - ultima_bateria) >= 30000) {
     ultima_bateria = millis();
     if (!lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
       LOG_WARN("BATERIA", "Teclado aberto; pulando atualização da label por 10 segundos.");
-      ultima_bateria -= 20000; //hack para aguardar 1 segundo e tantar de novo
+      ultima_bateria -= 20000; //hack para aguardar 10 segundos e tentar de novo
       return;
     }
 
-    LOG_INFO("BATT", "Nivel atual: %d%%", bateria_pct);
+    int bateria_pct = ler_bateria_suave();
+
+    // LOG_INFO("BATT", "Nivel atual: %d%%", bateria_pct);
 
     snprintf(bateria, sizeof(bateria), "%d%%", bateria_pct);
 
@@ -157,71 +161,57 @@ void loop() {
       lv_label_set_text(objects.lb_bateria, bateria);
       bsp_display_unlock();
     } else {
-      ultima_bateria -= 20000; //hack para aguardar 1 segundo e tantar de novo
+      ultima_bateria -= 20000; //hack para aguardar 10 segundos e tentar de novo
       LOG_ERROR("BATERIA", "LVGL muito ocupado; pulando atualização por 10 segundos.");
-      // Serial.printf("**** Heap Livre: %d bytes\n", ESP.getFreeHeap());
-      // Serial.printf("**** Maior bloco livre: %d bytes\n", ESP.getMinFreeHeap()); // Menor nível que o heap já chegou
     }
   }
   
 }
 
-static int ler_bateria_otimizada() {
+static float ler_bateria_bruta() {
   // static mantém o valor da leitura anterior guardado na memória
   static float valorFiltrado = -1.0; 
   
   // Lê o ADC apenas UMA vez (sem travar com laço for ou delays)
   int leituraBruta = analogRead(BATT_PIN); 
   
-  // Converte para tensão real da célula (fórmula que já usamos)
-  float voltagemAtual = (leituraBruta * REFERENCIA_V / RESOLUCAO_ADC) * FATOR_DIVISOR;
-  //Serial.println(voltagemAtual);
   // Inicialização na primeira corrida
   if (valorFiltrado < 0.0) {
-      valorFiltrado = voltagemAtual;
-      return valorFiltrado;
+    long soma = leituraBruta;
+    
+    // Tira 5 amostras rápidas consecutivas para estabilizar o pino
+    for (int i = 0; i < 5; i++) {
+      soma += analogRead(BATT_PIN);
+      delay(2); // Meio milissegundo entre leituras
+    }
+    
+    // Média inicial sólida
+    valorFiltrado = (float)(soma / 6.0f);
+    
+    return valorFiltrado;
   }
+
 
   // Fator de suavização (Alfa). Quanto MENOR, mais estável e lento o filtro fica.
   // 0.05 significa que a nova leitura tem peso de 5% e o histórico tem peso de 95%
-  const float ALFA = 0.03; 
-  
   // Aplica a fórmula do filtro EMA
-  valorFiltrado = (ALFA * voltagemAtual) + ((1.0 - ALFA) * valorFiltrado);
+  valorFiltrado = (ALFA * (float)leituraBruta) + ((1.0 - ALFA) * valorFiltrado);
 
-  // LOG_INFO("BATERIA", "RAW: %f, VPin: %f, VBat: %f", mediaADC, tensao_pino, tensao_bateria);
-
-  if (valorFiltrado >= TENSAO_MAX) return 100;
-  if (valorFiltrado <= TENSAO_MIN) return 0;
-
-  // Mapeamento linear básico (para precisão total seria necessária uma tabela lookup)
-  return (int)((valorFiltrado - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
+  return valorFiltrado;
 }
 
-static int ler_bateria() {
-  long somaAmostras = 0;
-  const int numeroAmostras = 50;
+static int ler_bateria_suave() {
+  float valorBruto = ler_bateria_bruta();
+  float tensaoPino = (valorBruto * REFERENCIA_V / RESOLUCAO_ADC);
+  float tensaoBat = tensaoPino * FATOR_DIVISOR;
 
-  // Leitura múltipla para reduzir ruídos gerados pela oscilação do WiFi/Tela
-  for (int i = 0; i < numeroAmostras; i++) {
-      somaAmostras += analogRead(BATT_PIN);
-      delay(2);
-  }
-  float mediaADC = (float)somaAmostras / numeroAmostras;
+  LOG_INFO("BATERIA", "RAW: %.0f, VPin: %.2f, VBat: %.2f", valorBruto, tensaoPino, tensaoBat);
 
-  // Converte o valor analógico bruto para a voltagem lida no pino do ESP32
-  float tensao_pino = (mediaADC * REFERENCIA_V) / RESOLUCAO_ADC;
-
-  // Multiplica pelo fator do divisor para descobrir a voltagem real da célula de Lítio
-  float tensao_bateria = tensao_pino * FATOR_DIVISOR;
-
-  LOG_INFO("BATERIA", "RAW: %f, VPin: %f, VBat: %f", mediaADC, tensao_pino, tensao_bateria);
-
-  if (tensao_bateria >= TENSAO_MAX) return 100;
-  if (tensao_bateria <= TENSAO_MIN) return 0;
+  if (tensaoBat >= TENSAO_MAX) return 100;
+  if (tensaoBat <= TENSAO_MIN) return 0;
 
   // Mapeamento linear básico (para precisão total seria necessária uma tabela lookup)
-  return (int)((tensao_bateria - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
+  return (int)((tensaoBat - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
 }
 
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event) {
