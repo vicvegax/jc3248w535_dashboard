@@ -60,6 +60,18 @@ void create_screen_main() {
                     // tab_home
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Home");
                     objects.tab_home = obj;
+                    {
+                        lv_obj_t *parent_obj = obj;
+                        {
+                            // lb_contador
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_contador = obj;
+                            lv_obj_set_pos(obj, -2, 8);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_obj_set_style_align(obj, LV_ALIGN_TOP_RIGHT, LV_PART_MAIN | LV_STATE_DEFAULT);
+                            lv_label_set_text_static(obj, "Contador 1s");
+                        }
+                    }
                 }
                 {
                     // tab_cluster
@@ -523,13 +535,28 @@ void create_screen_form_cluster() {
 void tick_screen_form_cluster() {
 }
 
+void create_screen_form_black() {
+    lv_obj_t *obj = lv_obj_create(0);
+    objects.form_black = obj;
+    lv_obj_set_pos(obj, 0, 0);
+    lv_obj_set_size(obj, 480, 320);
+    lv_obj_add_event_cb(obj, action_close_screensaver, LV_EVENT_RELEASED, (void *)0);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    
+    tick_screen_form_black();
+}
+
+void tick_screen_form_black() {
+}
+
 typedef void (*tick_screen_func_t)();
 tick_screen_func_t tick_screen_funcs[] = {
     tick_screen_main,
     tick_screen_form_cluster,
+    tick_screen_form_black,
 };
 void tick_screen(int screen_index) {
-    if (screen_index >= 0 && screen_index < 2) {
+    if (screen_index >= 0 && screen_index < 3) {
         tick_screen_funcs[screen_index]();
     }
 }
@@ -628,4 +655,5 @@ void create_screens() {
     // Create screens
     create_screen_main();
     create_screen_form_cluster();
+    create_screen_form_black();
 }

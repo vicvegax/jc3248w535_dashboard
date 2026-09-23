@@ -99,7 +99,8 @@ void esquecer_wifi() {
   prefs.end();
 }
 
-void exibir_spinner() {
+void exibir_spinner(String onde) {
+  LOG_SPINNER(onde.c_str(), "MOSTRANDO SPINNER");
   lv_obj_clear_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
 }
 

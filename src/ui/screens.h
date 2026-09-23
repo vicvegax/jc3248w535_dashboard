@@ -13,16 +13,19 @@ enum ScreensEnum {
     _SCREEN_ID_FIRST = 1,
     SCREEN_ID_MAIN = 1,
     SCREEN_ID_FORM_CLUSTER = 2,
-    _SCREEN_ID_LAST = 2
+    SCREEN_ID_FORM_BLACK = 3,
+    _SCREEN_ID_LAST = 3
 };
 
 typedef struct _objects_t {
     lv_obj_t *main;
     lv_obj_t *form_cluster;
+    lv_obj_t *form_black;
     lv_obj_t *lb_conectado;
     lv_obj_t *lb_cluster;
     lv_obj_t *tv_dashboard;
     lv_obj_t *tab_home;
+    lv_obj_t *lb_contador;
     lv_obj_t *tab_cluster;
     lv_obj_t *bt_del_cluster;
     lv_obj_t *remover;
@@ -69,6 +72,9 @@ void tick_screen_main();
 
 void create_screen_form_cluster();
 void tick_screen_form_cluster();
+
+void create_screen_form_black();
+void tick_screen_form_black();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

@@ -9,7 +9,7 @@ RequisicaoAgendada req_atual = {"", NULL, false};
 
 void get(String path, HttpCallback callback_processamento) {
   // showHeap();//"ANTES GET");
-  exibir_spinner();
+  exibir_spinner(String("requisicao " + path));
 
   // Apenas agenda a requisição para o loop principal executar fora do LVGL
   req_atual.url = "http://" + cluster.http + ":" + cluster.port + path;

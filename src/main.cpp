@@ -36,19 +36,50 @@
 char bateria[8];
 
 uint32_t ultima_bateria;
+uint32_t ultima_requisicao;
+void (*requisicao)() = nullptr;
+
 uint32_t ultimo_heartbeat;
 static float ler_bateria_bruta();
 static int ler_bateria_suave();
+static bool tela_apagada = false;
+
+// Tempo de inatividade em milissegundos (ex: 30 segundos)
+#define TEMPO_INATIVIDADE_MS (30000)
+
+lv_timer_t *timer1s;
 
 lv_style_t estilo_checked;
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
 static uint16_t ultima_aba_aberta = -1;
-
+uint32_t contador = 0;
 void cb_log(const char* buf) {
   Serial.println("****GERADO PELO CALLBACK****");
   Serial.println(buf);
   Serial.println("****************************");
 }
+
+extern "C" void action_close_screensaver(lv_event_t *e) {
+  lv_scr_load(objects.main);
+  bsp_display_brightness_set(25); 
+  // delay(200);
+  tela_apagada = false;
+  lv_timer_ready(timer1s);
+}
+
+void my_timer(lv_timer_t * timer) {
+  if(requisicao && !tela_apagada) {
+    LOG_INFO("rodando do timer", "REQUISICAO");
+    requisicao();
+  } else {
+    if(!tela_apagada) {
+      LOG_WARN("rodando do timer", "NAO TEM REQUISICAO!");
+    }
+  }
+  contador++;
+  lv_label_set_text(objects.lb_contador, String(contador).c_str());
+};
+
 
 void setup() {
   String title = "Dashboard";
@@ -77,6 +108,9 @@ void setup() {
   LOG_INFO(title, "Criando UI...");
   /* Lock the mutex due to the LVGL APIs are not thread-safe */
   bsp_display_lock(0); //SETUP
+
+  timer1s = lv_timer_create(my_timer, 5000, nullptr);
+  //lv_timer_pause(timer1s);
 
   ui_init();
 
@@ -121,7 +155,10 @@ void setup() {
 }
 
 void loop() {
-  requisicoes_pendentes();
+  //if((millis() - ultima_requisicao) > 1000) {
+    ultima_requisicao = millis();
+    requisicoes_pendentes();
+  //}
   escanear_redes();
   delay(50);
 
@@ -165,7 +202,31 @@ void loop() {
       LOG_ERROR("BATERIA", "LVGL muito ocupado; pulando atualização por 10 segundos.");
     }
   }
-  
+
+
+  static uint32_t ultimo_check_inativo = 0;
+  if (millis() - ultimo_check_inativo >= 1000) {
+    ultimo_check_inativo = millis();
+
+    // Pergunta ao LVGL há quantos ms o usuário não toca na tela
+    uint32_t tempo_inativo = lv_disp_get_inactive_time(NULL);
+
+    if (!tela_apagada && tempo_inativo >= TEMPO_INATIVIDADE_MS) {
+      Serial.println("CHEGOU AQUI2");
+      if (bsp_display_lock(100)) {
+        tela_apagada = true;
+        lv_scr_load(objects.form_black);
+        bsp_display_brightness_set(0); 
+        // Apaga a luz de fundo completamente (0%)
+        
+        // Ativa o overlay transparente e joga ele para a frente de tudo
+        
+        bsp_display_unlock();
+        LOG_INFO("DISPLAY", "Inatividade detectada. Tela apagada.");
+      }
+    }
+  }
+
 }
 
 static float ler_bateria_bruta() {
@@ -180,13 +241,13 @@ static float ler_bateria_bruta() {
     long soma = leituraBruta;
     
     // Tira 5 amostras rápidas consecutivas para estabilizar o pino
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 10; i++) {
       soma += analogRead(BATT_PIN);
-      delay(2); // Meio milissegundo entre leituras
+      delay(1); // Meio milissegundo entre leituras
     }
     
     // Média inicial sólida
-    valorFiltrado = (float)(soma / 6.0f);
+    valorFiltrado = (float)(soma / 10.0f);
     
     return valorFiltrado;
   }
@@ -228,9 +289,10 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
   }
 
   lv_obj_t *tabview = lv_event_get_target(e);
-
   uint16_t aba_ativa = lv_tabview_get_tab_act(tabview);
+
   if (tabview == objects.tv_config) {
+    //lv_timer_pause(timer1s);
     //ultima_aba_aberta = -1;
     String tv = "tv_config";
     switch (aba_ativa) {
@@ -241,15 +303,26 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
       case 1:
         LOG_INFO(tv, "Wifi selecionado");
         // escanear_redes();
-        exibir_spinner();
+        exibir_spinner("WIFI");
         loopListaWifi = true;
         break;
     }
-  } else if (tabview == objects.tv_dashboard) {
+  } else if (tabview == objects.tv_dashboard) { 
+    //! DEVE VERIFICAR INFORMAÇÕES DE ZERAMENTO NA TABVIEW CERTA!!!!!
+    //req_atual.pendente = false;
+    ultima_requisicao = 0;
+    LOG_ERROR("mudanca_aba", "zerou a requisicao");
+    requisicao = nullptr;
+
     String tv = "tv_dashboard";
     ultima_aba_aberta = aba_ativa;
+    if(aba_ativa != 0) {
+      //lv_timer_pause(timer1s);
+    }
     switch (aba_ativa) {
       case 0: //Home
+        //lv_timer_resume(timer1s);
+        //lv_timer_reset(timer1s);
         LOG_INFO(tv, "Home selecionado");
         break;
       case 1: //Cluster
@@ -259,11 +332,11 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
       case 2: //Docker
         LOG_INFO(tv, "Docker selecionado");
         /* code */
-        lv_lista_containers();
+        requisicao = lv_lista_containers;
         break;
       case 3: //Rede
         LOG_INFO(tv, "Rede selecionado");
-        lv_info_rede();
+        requisicao = lv_info_rede;
         break;
       case 4: //Alertas
         LOG_INFO(tv, "Alertas selecionado");
@@ -272,6 +345,13 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
         LOG_INFO(tv, "Config selecionado");
         break;
     }
+  }
+
+  if(requisicao) {
+    // lv_timer_reset(timer1s);
+    LOG_INFO("mudanca_aba", "tem requisicao");
+    lv_timer_ready(timer1s);
+    // requisicao();
   }
 }
 

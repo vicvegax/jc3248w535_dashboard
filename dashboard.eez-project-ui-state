@@ -1,7 +1,7 @@
 {
   "navigation": {
     "selectedUserPageObject": "[dashboard.eez-project]:/userPages/0",
-    "selectedActionObject": "[dashboard.eez-project]:/actions/12",
+    "selectedActionObject": "[dashboard.eez-project]:/actions/13",
     "subnavigationSelectedItems": {
       "variables-tab/sub-navigation/selected-item": "Enums"
     }
@@ -123,7 +123,6 @@
                   "type": "tabset",
                   "id": "#eb54505f-552c-459f-a8e8-1b3ca8010e76",
                   "weight": 1,
-                  "selected": 2,
                   "enableClose": false,
                   "children": [
                     {
@@ -189,7 +188,7 @@
             {
               "type": "tabset",
               "id": "EDITORS",
-              "weight": 64.9047282992237,
+              "weight": 65.01250781738587,
               "selected": 1,
               "enableDeleteWhenEmpty": false,
               "enableClose": false,
@@ -216,12 +215,13 @@
                   },
                   "icon": "svg:page"
                 }
-              ]
+              ],
+              "active": true
             },
             {
               "type": "row",
               "id": "#059b5b91-58dd-428c-a054-fac7dacfe2cd",
-              "weight": 20.095271700776287,
+              "weight": 19.987492182614133,
               "children": [
                 {
                   "type": "tabset",
@@ -236,8 +236,7 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ],
-                  "active": true
+                  ]
                 },
                 {
                   "type": "tabset",
@@ -1111,7 +1110,11 @@
       "selectionBack": {
         "0": {
           "2": {
-            "0": {},
+            "0": {
+              "0": {
+                "$selected": true
+              }
+            },
             "4": {},
             "5": {
               "0": {
@@ -1122,9 +1125,7 @@
             }
           },
           "4": {},
-          "5": {
-            "$selected": true
-          }
+          "5": {}
         }
       },
       "transform": {
@@ -1145,9 +1146,7 @@
       "selectionFront": {},
       "selectionBack": {
         "0": {
-          "7": {
-            "$selected": true
-          }
+          "7": {}
         }
       },
       "transform": {
@@ -1197,7 +1196,9 @@
   "lvglPart": "MAIN",
   "lvglState": "DEFAULT",
   "lvglExpandedPropertiesGroup": [
-    "POSITION AND SIZE"
+    "BACKGROUND",
+    "POSITION AND SIZE",
+    "LAYOUT"
   ],
   "showInactiveFlowsInDebugger": true,
   "globalFlowZoom": true,
