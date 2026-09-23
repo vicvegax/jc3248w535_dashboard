@@ -16,6 +16,11 @@
 #include "requisicao.h"
 #include "db_docker.h"
 #include "logger.h"
+#include "baterry_monitor.h"
+
+// Exemplo: Pino 5, com divisor resistivo genérico do JC3248 (ajuste o 2.0f se o hardware usar resistores diferentes, ex: 100k/100k = 2.0)
+#define BATTERY_PIN A4
+#define VOLTAGE_MULTIPLIER (1.69f)
 
 #define DEBUG_TASKS() \
     Serial.printf("Stack livre Loop: %d | Stack livre GUI: %d\n", \
@@ -25,23 +30,13 @@
 
 #define BLINK_LED
 #define LED_PIN         (17)
-#define BATT_PIN         (5)
-#define REFERENCIA_V     (3.3)       // Tensão de referência do ADC
-#define RESOLUCAO_ADC (4095.0)       // 12-bits de resolução (0 a 4095)
-#define FATOR_DIVISOR    (1.77)      // Divisor de tensão físico na placa (proporção 2:1)
-#define TENSAO_MAX       (4.15)
-#define TENSAO_MIN       (3.15)
-#define ALFA             (0.03)
 
 char bateria[8];
 
-uint32_t ultima_bateria;
 uint32_t ultima_requisicao;
 void (*requisicao)() = nullptr;
 
 uint32_t ultimo_heartbeat;
-static float ler_bateria_bruta();
-static int ler_bateria_suave();
 static bool tela_apagada = false;
 
 // Tempo de inatividade em milissegundos (ex: 30 segundos)
@@ -50,13 +45,64 @@ static bool tela_apagada = false;
 lv_timer_t *timer1s;
 
 lv_style_t estilo_checked;
-static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
 static uint16_t ultima_aba_aberta = -1;
+static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event = true);
+
 uint32_t contador = 0;
+
 void cb_log(const char* buf) {
   Serial.println("****GERADO PELO CALLBACK****");
   Serial.println(buf);
   Serial.println("****************************");
+}
+
+// Timer do LVGL para atualizar a UI a cada 1 segundo
+void battery_ui_timer_cb(lv_timer_t * timer) {
+  // float soma = 0;
+  
+  // // Tira uma média de 50 amostras rápidas para estabilizar o valor na tela
+  // for(int i = 0; i < 50; i++) {
+  //     soma += analogReadMilliVolts(5) / 1000.0f;
+  //     delay(2); // delay minúsculo
+  // }
+  
+  // float tensao_pino = soma / 50.0f;    
+  // // Imprime direto na tela do JC3248W535
+  // // Separa a parte inteira e a parte decimal (3 casas)
+  // int parte_inteira = (int)tensao_pino;
+  // int parte_decimal = (int)((tensao_pino - parte_inteira) * 1000);
+  
+  // // Imprime como dois inteiros: "Ex: 2.970 V"
+  // lv_label_set_text_fmt(objects.lb_bateria, "%d.%03d V", parte_inteira, parte_decimal);
+  // Serial.printf("%f\n", tensao_pino);
+  // return;
+
+
+  // Variáveis estáticas guardam o último estado desenhado
+  static uint8_t last_pct = 255; 
+  static bool last_charging = false;
+
+  uint8_t current_pct = BatteryMonitor::getInstance().getPercentage();
+  bool current_charging = BatteryMonitor::getInstance().isCharging();
+
+  // SÓ processa o LVGL se algo realmente mudou!
+  if ((current_pct != last_pct || current_charging != last_charging) && !tela_apagada) {
+    
+    if (current_charging) {
+      lv_label_set_text_fmt(objects.lb_bateria, LV_SYMBOL_CHARGE " %d%%", current_pct);
+    } else {
+      const char* icon = LV_SYMBOL_BATTERY_FULL;
+      if (current_pct <= 20) icon = LV_SYMBOL_BATTERY_EMPTY;
+      else if (current_pct <= 50) icon = LV_SYMBOL_BATTERY_2;
+      else if (current_pct <= 80) icon = LV_SYMBOL_BATTERY_3;
+
+      lv_label_set_text_fmt(objects.lb_bateria, "%s %d%%", icon, current_pct);
+    }
+
+    // Atualiza a memória
+    last_pct = current_pct;
+    last_charging = current_charging;
+  }
 }
 
 extern "C" void action_close_screensaver(lv_event_t *e) {
@@ -80,7 +126,11 @@ void my_timer(lv_timer_t * timer) {
   lv_label_set_text(objects.lb_contador, String(contador).c_str());
 };
 
-
+//  SSS  EEEE TTTTTT U   U PPPP  
+// S     E      TT   U   U P   P 
+//  SSS  EEE    TT   U   U PPPP  
+//     S E      TT   U   U P     
+// SSSS  EEEE   TT    UUU  P     
 void setup() {
   String title = "Dashboard";
 
@@ -88,7 +138,7 @@ void setup() {
   LOG_INFO(title, "INICIALIZANDO...");
 
   lv_log_register_print_cb(cb_log);
-
+  analogSetPinAttenuation(BATTERY_PIN, ADC_11db);
   //task_affinity = 1 <<<<<<<<< FIXA NO CORE 1 (LOOP)
   bsp_display_cfg_t cfg = {
     .lvgl_port_cfg = {
@@ -149,12 +199,22 @@ void setup() {
   #ifdef BLINK_LED
     pinMode(LED_PIN, OUTPUT);
   #endif
-  ultima_bateria = millis() - 20000;
   ultimo_heartbeat = 0;
+
+  BatteryMonitor::getInstance().begin(BATTERY_PIN, VOLTAGE_MULTIPLIER);
+  lv_timer_create(battery_ui_timer_cb, 1000, nullptr);
+
   LOG_INFO(title, "INICIALIZADO!");
 }
 
+// L     OOO   OOO  PPPP  
+// L    O   O O   O P   P 
+// L    O   O O   O PPPP  
+// L    O   O O   O P     
+// LLLL  OOO   OOO  P     
 void loop() {
+  BatteryMonitor::getInstance().update();
+
   //if((millis() - ultima_requisicao) > 1000) {
     ultima_requisicao = millis();
     requisicoes_pendentes();
@@ -179,31 +239,6 @@ void loop() {
     #endif
   }
 
-  ler_bateria_bruta();
-  if((millis() - ultima_bateria) >= 30000) {
-    ultima_bateria = millis();
-    if (!lv_obj_has_flag(objects.keyboard_1, LV_OBJ_FLAG_HIDDEN)) {
-      LOG_WARN("BATERIA", "Teclado aberto; pulando atualização da label por 10 segundos.");
-      ultima_bateria -= 20000; //hack para aguardar 10 segundos e tentar de novo
-      return;
-    }
-
-    int bateria_pct = ler_bateria_suave();
-
-    // LOG_INFO("BATT", "Nivel atual: %d%%", bateria_pct);
-
-    snprintf(bateria, sizeof(bateria), "%d%%", bateria_pct);
-
-    if(bsp_display_lock(150)) {
-      lv_label_set_text(objects.lb_bateria, bateria);
-      bsp_display_unlock();
-    } else {
-      ultima_bateria -= 20000; //hack para aguardar 10 segundos e tentar de novo
-      LOG_ERROR("BATERIA", "LVGL muito ocupado; pulando atualização por 10 segundos.");
-    }
-  }
-
-
   static uint32_t ultimo_check_inativo = 0;
   if (millis() - ultimo_check_inativo >= 1000) {
     ultimo_check_inativo = millis();
@@ -212,7 +247,7 @@ void loop() {
     uint32_t tempo_inativo = lv_disp_get_inactive_time(NULL);
 
     if (!tela_apagada && tempo_inativo >= TEMPO_INATIVIDADE_MS) {
-      Serial.println("CHEGOU AQUI2");
+      //Serial.println("CHEGOU AQUI2");
       if (bsp_display_lock(100)) {
         tela_apagada = true;
         lv_scr_load(objects.form_black);
@@ -222,57 +257,11 @@ void loop() {
         // Ativa o overlay transparente e joga ele para a frente de tudo
         
         bsp_display_unlock();
-        LOG_INFO("DISPLAY", "Inatividade detectada. Tela apagada.");
+        LOG_WARN("DISPLAY", "Inatividade detectada. Tela apagada.");
       }
     }
   }
 
-}
-
-static float ler_bateria_bruta() {
-  // static mantém o valor da leitura anterior guardado na memória
-  static float valorFiltrado = -1.0; 
-  
-  // Lê o ADC apenas UMA vez (sem travar com laço for ou delays)
-  int leituraBruta = analogRead(BATT_PIN); 
-  
-  // Inicialização na primeira corrida
-  if (valorFiltrado < 0.0) {
-    long soma = leituraBruta;
-    
-    // Tira 5 amostras rápidas consecutivas para estabilizar o pino
-    for (int i = 0; i < 10; i++) {
-      soma += analogRead(BATT_PIN);
-      delay(1); // Meio milissegundo entre leituras
-    }
-    
-    // Média inicial sólida
-    valorFiltrado = (float)(soma / 10.0f);
-    
-    return valorFiltrado;
-  }
-
-
-  // Fator de suavização (Alfa). Quanto MENOR, mais estável e lento o filtro fica.
-  // 0.05 significa que a nova leitura tem peso de 5% e o histórico tem peso de 95%
-  // Aplica a fórmula do filtro EMA
-  valorFiltrado = (ALFA * (float)leituraBruta) + ((1.0 - ALFA) * valorFiltrado);
-
-  return valorFiltrado;
-}
-
-static int ler_bateria_suave() {
-  float valorBruto = ler_bateria_bruta();
-  float tensaoPino = (valorBruto * REFERENCIA_V / RESOLUCAO_ADC);
-  float tensaoBat = tensaoPino * FATOR_DIVISOR;
-
-  LOG_INFO("BATERIA", "RAW: %.0f, VPin: %.2f, VBat: %.2f", valorBruto, tensaoPino, tensaoBat);
-
-  if (tensaoBat >= TENSAO_MAX) return 100;
-  if (tensaoBat <= TENSAO_MIN) return 0;
-
-  // Mapeamento linear básico (para precisão total seria necessária uma tabela lookup)
-  return (int)((tensaoBat - TENSAO_MIN) / (TENSAO_MAX - TENSAO_MIN) * 100.0);
 }
 
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event) {

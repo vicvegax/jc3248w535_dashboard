@@ -21,8 +21,8 @@
 
 // Macro Base (A verdadeira "engine" do log)
 #define LOG_BASE(color, level_name, indent, tag, fmt, ...) \
-    Serial.printf("%s[%lu] [%s] [%s] (%s) %s -> %.*s" fmt "%s\n", \
-    color, millis(), level_name, tag, pcTaskGetName(NULL), __func__, (indent)*2, LOG_PAD_DOTS, ##__VA_ARGS__, LOG_COLOR_RESET)
+    Serial.printf("%s[%lu] (%s) [%s] [%s] %s -> %.*s" fmt "%s\n", \
+    color, millis(), pcTaskGetName(NULL), level_name, tag, __func__, (indent)*2, LOG_PAD_DOTS, ##__VA_ARGS__, LOG_COLOR_RESET)
 
 // ==========================================
 // NÍVEL 0 (Sem indentação - Início de evento)
