@@ -63,6 +63,14 @@ void create_screen_main() {
                     {
                         lv_obj_t *parent_obj = obj;
                         {
+                            // lb_bateriav
+                            lv_obj_t *obj = lv_label_create(parent_obj);
+                            objects.lb_bateriav = obj;
+                            lv_obj_set_pos(obj, 112, 167);
+                            lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+                            lv_label_set_text_static(obj, "Text");
+                        }
+                        {
                             // lb_contador
                             lv_obj_t *obj = lv_label_create(parent_obj);
                             objects.lb_contador = obj;

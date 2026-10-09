@@ -16,16 +16,17 @@
 #include "requisicao.h"
 #include "db_docker.h"
 #include "logger.h"
-#include "baterry_monitor.h"
+#include <Battery.h>
 
-// Exemplo: Pino 5, com divisor resistivo genérico do JC3248 (ajuste o 2.0f se o hardware usar resistores diferentes, ex: 100k/100k = 2.0)
-#define BATTERY_PIN A4
-#define VOLTAGE_MULTIPLIER (1.69f)
+// Exemplo: Pino A4, com divisor resistivo genérico do JC3248 (ajuste o 2.0f se o hardware usar resistores diferentes, ex: 33k+100k/100k = 1.33)
+#define BATTERY_PIN         A4
+
+Battery battery(3100, 4100, BATTERY_PIN);
 
 #define DEBUG_TASKS() \
-    Serial.printf("Stack livre Loop: %d | Stack livre GUI: %d\n", \
-    uxTaskGetStackHighWaterMark(NULL), \
-    uxTaskGetStackHighWaterMark(xTaskGetHandle("LVGL task"))) // ou o nome que o bsp usa
+  Serial.printf("Stack livre Loop: %d | Stack livre GUI: %d\n", \
+  uxTaskGetStackHighWaterMark(NULL), \
+  uxTaskGetStackHighWaterMark(xTaskGetHandle("LVGL task"))) // ou o nome que o bsp usa
 
 
 #define BLINK_LED
@@ -42,7 +43,10 @@ static bool tela_apagada = false;
 // Tempo de inatividade em milissegundos (ex: 30 segundos)
 #define TEMPO_INATIVIDADE_MS (30000)
 
-lv_timer_t *timer1s;
+uint8_t tempoRequisicao = 5; //em segundos
+uint8_t tempoScreensaver = 60;
+
+lv_timer_t *timerRequisicao;
 
 lv_style_t estilo_checked;
 static uint16_t ultima_aba_aberta = -1;
@@ -58,33 +62,13 @@ void cb_log(const char* buf) {
 
 // Timer do LVGL para atualizar a UI a cada 1 segundo
 void battery_ui_timer_cb(lv_timer_t * timer) {
-  // float soma = 0;
-  
-  // // Tira uma média de 50 amostras rápidas para estabilizar o valor na tela
-  // for(int i = 0; i < 50; i++) {
-  //     soma += analogReadMilliVolts(5) / 1000.0f;
-  //     delay(2); // delay minúsculo
-  // }
-  
-  // float tensao_pino = soma / 50.0f;    
-  // // Imprime direto na tela do JC3248W535
-  // // Separa a parte inteira e a parte decimal (3 casas)
-  // int parte_inteira = (int)tensao_pino;
-  // int parte_decimal = (int)((tensao_pino - parte_inteira) * 1000);
-  
-  // // Imprime como dois inteiros: "Ex: 2.970 V"
-  // lv_label_set_text_fmt(objects.lb_bateria, "%d.%03d V", parte_inteira, parte_decimal);
-  // Serial.printf("%f\n", tensao_pino);
-  // return;
-
-
   // Variáveis estáticas guardam o último estado desenhado
   static uint8_t last_pct = 255; 
   static bool last_charging = false;
 
-  uint8_t current_pct = BatteryMonitor::getInstance().getPercentage();
-  bool current_charging = BatteryMonitor::getInstance().isCharging();
-
+  uint8_t current_pct = battery.level();// BatteryMonitor::getInstance().getPercentage();
+  bool current_charging = false;
+  lv_label_set_text_fmt(objects.lb_bateriav, "%d", battery.voltage());
   // SÓ processa o LVGL se algo realmente mudou!
   if ((current_pct != last_pct || current_charging != last_charging) && !tela_apagada) {
     
@@ -108,12 +92,11 @@ void battery_ui_timer_cb(lv_timer_t * timer) {
 extern "C" void action_close_screensaver(lv_event_t *e) {
   lv_scr_load(objects.main);
   bsp_display_brightness_set(25); 
-  // delay(200);
   tela_apagada = false;
-  lv_timer_ready(timer1s);
+  lv_timer_ready(timerRequisicao);
 }
 
-void my_timer(lv_timer_t * timer) {
+void timer_requisicao(lv_timer_t * timer) {
   if(requisicao && !tela_apagada) {
     LOG_INFO("rodando do timer", "REQUISICAO");
     requisicao();
@@ -124,6 +107,7 @@ void my_timer(lv_timer_t * timer) {
   }
   contador++;
   lv_label_set_text(objects.lb_contador, String(contador).c_str());
+  lv_timer_reset(timer);
 };
 
 //  SSS  EEEE TTTTTT U   U PPPP  
@@ -132,6 +116,9 @@ void my_timer(lv_timer_t * timer) {
 //     S E      TT   U   U P     
 // SSSS  EEEE   TT    UUU  P     
 void setup() {
+  //(68k+100k)/100k
+	battery.begin(1100, float(33+100)/(float)100,  &sigmoidal);
+
   String title = "Dashboard";
 
   Serial.begin(115200);
@@ -153,14 +140,11 @@ void setup() {
   };
 
   bsp_display_start_with_config(&cfg);
-  // // Inicia com brilho máximo (255)
+  // Inicia com brilho máximo (255)
 
   LOG_INFO(title, "Criando UI...");
   /* Lock the mutex due to the LVGL APIs are not thread-safe */
   bsp_display_lock(0); //SETUP
-
-  timer1s = lv_timer_create(my_timer, 5000, nullptr);
-  //lv_timer_pause(timer1s);
 
   ui_init();
 
@@ -201,7 +185,7 @@ void setup() {
   #endif
   ultimo_heartbeat = 0;
 
-  BatteryMonitor::getInstance().begin(BATTERY_PIN, VOLTAGE_MULTIPLIER);
+  timerRequisicao = lv_timer_create(timer_requisicao, tempoRequisicao * 1000, nullptr);
   lv_timer_create(battery_ui_timer_cb, 1000, nullptr);
 
   LOG_INFO(title, "INICIALIZADO!");
@@ -213,14 +197,11 @@ void setup() {
 // L    O   O O   O P     
 // LLLL  OOO   OOO  P     
 void loop() {
-  BatteryMonitor::getInstance().update();
 
-  //if((millis() - ultima_requisicao) > 1000) {
-    ultima_requisicao = millis();
-    requisicoes_pendentes();
-  //}
+  ultima_requisicao = millis();
+  requisicoes_pendentes();
   escanear_redes();
-  delay(50);
+  //delay(50);
 
   //Defina como 0 para depurar
   if((millis() - ultimo_heartbeat) >= 10000) {
@@ -242,12 +223,16 @@ void loop() {
   static uint32_t ultimo_check_inativo = 0;
   if (millis() - ultimo_check_inativo >= 1000) {
     ultimo_check_inativo = millis();
+	Serial.print("Battery voltage is ");
+	Serial.print(battery.voltage());
+	Serial.print(" (");
+	Serial.print(battery.level());
+	Serial.println("%)");
 
     // Pergunta ao LVGL há quantos ms o usuário não toca na tela
     uint32_t tempo_inativo = lv_disp_get_inactive_time(NULL);
 
-    if (!tela_apagada && tempo_inativo >= TEMPO_INATIVIDADE_MS) {
-      //Serial.println("CHEGOU AQUI2");
+    if (!tela_apagada && tempo_inativo >= (tempoScreensaver * 1000)) {
       if (bsp_display_lock(100)) {
         tela_apagada = true;
         lv_scr_load(objects.form_black);
@@ -255,13 +240,11 @@ void loop() {
         // Apaga a luz de fundo completamente (0%)
         
         // Ativa o overlay transparente e joga ele para a frente de tudo
-        
         bsp_display_unlock();
         LOG_WARN("DISPLAY", "Inatividade detectada. Tela apagada.");
       }
     }
   }
-
 }
 
 static void focus_tab(lv_obj_t *tabview, lv_obj_t *target_page, bool send_event) {
@@ -281,8 +264,6 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
   uint16_t aba_ativa = lv_tabview_get_tab_act(tabview);
 
   if (tabview == objects.tv_config) {
-    //lv_timer_pause(timer1s);
-    //ultima_aba_aberta = -1;
     String tv = "tv_config";
     switch (aba_ativa) {
       case 0:
@@ -298,7 +279,6 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
     }
   } else if (tabview == objects.tv_dashboard) { 
     //! DEVE VERIFICAR INFORMAÇÕES DE ZERAMENTO NA TABVIEW CERTA!!!!!
-    //req_atual.pendente = false;
     ultima_requisicao = 0;
     LOG_ERROR("mudanca_aba", "zerou a requisicao");
     requisicao = nullptr;
@@ -310,8 +290,6 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
     }
     switch (aba_ativa) {
       case 0: //Home
-        //lv_timer_resume(timer1s);
-        //lv_timer_reset(timer1s);
         LOG_INFO(tv, "Home selecionado");
         break;
       case 1: //Cluster
@@ -337,10 +315,8 @@ extern "C" void action_mudanca_aba(lv_event_t *e) {
   }
 
   if(requisicao) {
-    // lv_timer_reset(timer1s);
     LOG_INFO("mudanca_aba", "tem requisicao");
-    lv_timer_ready(timer1s);
-    // requisicao();
+    lv_timer_ready(timerRequisicao);
   }
 }
 

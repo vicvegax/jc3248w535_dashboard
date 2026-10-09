@@ -25,6 +25,7 @@ typedef struct _objects_t {
     lv_obj_t *lb_cluster;
     lv_obj_t *tv_dashboard;
     lv_obj_t *tab_home;
+    lv_obj_t *lb_bateriav;
     lv_obj_t *lb_contador;
     lv_obj_t *tab_cluster;
     lv_obj_t *bt_del_cluster;
