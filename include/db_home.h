@@ -2,4 +2,6 @@
 
 void db_conectado();
 void db_desconectado();
-void tab_home_atualizar_dado_mqtt(const char* topico, const char* valor);
+void db_home_init();
+void lv_info_home(bool show_spinner = true);
+void db_home_tick();

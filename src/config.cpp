@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <Preferences.h>
+#include <time.h>
 #include "config.h"
 #include "ui/ui.h"
 #include <esp_bsp.h>
@@ -13,6 +14,7 @@ bool loopListaWifi = false;
 
 const char* CLUSTER_NAMESPACE = "clusters";
 const char* CLUSTER_KEY = "json";
+const char* CLUSTER_ACTIVE_KEY = "ativo_idx";
 const int MAX_CLUSTERS = 20;
 
 void showHeap(String msg) {
@@ -46,8 +48,9 @@ bool iniciar_wifi_salvo() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    LOG_INFO("WIFI", "Conectado com sucesso! Carregando 1º cluster salvo...");
-    atualizaClusterGlobal(0);
+    LOG_INFO("WIFI", "Conectado com sucesso! Carregando cluster salvo...");
+    configTime(-3 * 3600, 0, "a.st1.ntp.br", "pool.ntp.org");
+    atualizaClusterGlobal(obterClusterAtivoIndex());
     return true;
   } else {
     WiFi.disconnect();      // Cancela violentamente qualquer tentativa de conexão travada
@@ -57,22 +60,39 @@ bool iniciar_wifi_salvo() {
   }
 }
 
+int obterClusterAtivoIndex() {
+  prefs.begin(CLUSTER_NAMESPACE, true);
+  int idx = prefs.getInt(CLUSTER_ACTIVE_KEY, 0);
+  prefs.end();
+  return idx;
+}
+
 void atualizaClusterGlobal(int id) {
-  cluster = pegarCluster(id);
+  Cluster itens[MAX_CLUSTERS];
+  int total = carregarClusters(itens);
+
+  if (total <= 0) {
+    cluster = {"", "", "", 0};
+    id = -1;
+  } else {
+    if (id < 0 || id >= total) {
+      id = 0;
+    }
+    cluster = itens[id];
+  }
+
+  prefs.begin(CLUSTER_NAMESPACE, false);
+  prefs.putInt(CLUSTER_ACTIVE_KEY, id);
+  prefs.end();
+
   String msg = "Cluster nao selecionado!";
   if (cluster.http != "") {
     msg = "Cluster: " + cluster.http + ':' + cluster.port;
-    // LOG_INFO("CLUSTER", "Usando %s", msg.c_str());
-  // } else {
-    // LOG_ERROR("CLUSTER", "Não selecionado.");
   }
 
-  // if (xSemaphoreTake(lvgl_mutex, portMAX_DELAY) == pdTRUE) {
   bsp_display_lock(1000);
   lv_label_set_text(objects.lb_cluster, msg.c_str());
   bsp_display_unlock();
-    // xSemaphoreGive(lvgl_mutex); // Libera o LVGL para desenhar os novos itens
-  // }
 }
 
 // Salva e conecta (chamado pelo botão da aba Config)
@@ -89,11 +109,76 @@ bool salvar_e_conectar(String novo_ssid, String nova_senha) {
 void esquecer_wifi() {
   Serial.println("Esquecendo Wi-Fi salvo...");
   WiFi.disconnect(true, true); // Desconecta e apaga credenciais
-  delay(200); // Dá um respiro de 200ms para o hardware limpar o estado
-  prefs.begin("config", false);
+  delay(200);
+  prefs.begin("wifi", false);
   prefs.putString("ssid", "");
   prefs.putString("pass", "");
   prefs.end();
+}
+
+int obterBrilhoTela() {
+  prefs.begin("display", true);
+  int brilho = prefs.getInt("brilho", 25);
+  prefs.end();
+  if (brilho < 10) brilho = 10;
+  if (brilho > 100) brilho = 100;
+  return brilho;
+}
+
+void salvarBrilhoTela(int percent) {
+  if (percent < 10) percent = 10;
+  if (percent > 100) percent = 100;
+  prefs.begin("display", false);
+  prefs.putInt("brilho", percent);
+  prefs.end();
+}
+
+int obterTimeoutTelaSeg() {
+  prefs.begin("display", true);
+  int seg = prefs.getInt("timeout_s", 30);
+  prefs.end();
+  return seg;
+}
+
+void salvarTimeoutTelaSeg(int segundos) {
+  prefs.begin("display", false);
+  prefs.putInt("timeout_s", segundos);
+  prefs.end();
+}
+
+static constexpr int BAT_ADC_PIN = 5;
+static constexpr float BAT_DIVIDER_RATIO = 2.0f;
+static float bat_tensao_suavizada = 0.0f;
+
+void bateria_init() {
+  analogReadResolution(12);
+  analogSetPinAttenuation(BAT_ADC_PIN, ADC_11db);
+  bat_tensao_suavizada = 0.0f;
+}
+
+float bateria_ler_tensao() {
+  uint32_t soma_mv = 0;
+  constexpr int AMOSTRAS = 16;
+  for (int i = 0; i < AMOSTRAS; i++) {
+    soma_mv += analogReadMilliVolts(BAT_ADC_PIN);
+  }
+  float v_atual = ((soma_mv / static_cast<float>(AMOSTRAS)) / 1000.0f) * BAT_DIVIDER_RATIO;
+  if (bat_tensao_suavizada <= 0.1f) {
+    bat_tensao_suavizada = v_atual;
+  } else {
+    bat_tensao_suavizada = (bat_tensao_suavizada * 0.7f) + (v_atual * 0.3f);
+  }
+  return bat_tensao_suavizada;
+}
+
+int bateria_percentual(float v) {
+  // Curva aproximada Li-Ion/LiPo (3.20V = 0%, 4.20V = 100%)
+  if (v <= 3.20f) return 0;
+  if (v >= 4.20f) return 100;
+  if (v >= 4.00f) return 80 + static_cast<int>(((v - 4.00f) / 0.20f) * 20.0f);
+  if (v >= 3.75f) return 40 + static_cast<int>(((v - 3.75f) / 0.25f) * 40.0f);
+  if (v >= 3.55f) return 15 + static_cast<int>(((v - 3.55f) / 0.20f) * 25.0f);
+  return static_cast<int>(((v - 3.20f) / 0.35f) * 15.0f);
 }
 
 void exibir_spinner() {
@@ -105,14 +190,95 @@ void exibir_spinner() {
 }
 
 void ocultar_spinner() {
-  if(bsp_display_lock(0)) {
+  if (bsp_display_lock(200)) {
     lv_obj_add_flag(objects.pn_spinner, LV_OBJ_FLAG_HIDDEN);
-    lv_refr_now(NULL);
     bsp_display_unlock();
   } else {
     LOG_ERROR("SPINNER", "Erro ao ocultar");
   }
-  // Serial.println("Ocultando spinner...");
+}
+
+namespace {
+lv_obj_t *modal_confirm_bg = nullptr;
+void (*modal_confirm_cb)() = nullptr;
+
+void fechar_modal_confirm() {
+  if (modal_confirm_bg) {
+    lv_obj_del(modal_confirm_bg);
+    modal_confirm_bg = nullptr;
+  }
+  modal_confirm_cb = nullptr;
+}
+
+void modal_cancelar_cb(lv_event_t *e) {
+  if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+    fechar_modal_confirm();
+  }
+}
+
+void modal_ok_cb(lv_event_t *e) {
+  if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+    void (*cb)() = modal_confirm_cb;
+    fechar_modal_confirm();
+    if (cb) cb();
+  }
+}
+} // namespace
+
+void exibir_confirmacao(const char *titulo, const char *mensagem, const char *txt_confirmar, void (*on_confirm)()) {
+  fechar_modal_confirm();
+  modal_confirm_cb = on_confirm;
+
+  modal_confirm_bg = lv_obj_create(lv_layer_top());
+  lv_obj_set_size(modal_confirm_bg, lv_pct(100), lv_pct(100));
+  lv_obj_set_pos(modal_confirm_bg, 0, 0);
+  lv_obj_clear_flag(modal_confirm_bg, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(modal_confirm_bg, lv_color_black(), 0);
+  lv_obj_set_style_bg_opa(modal_confirm_bg, 170, 0);
+  lv_obj_set_style_border_width(modal_confirm_bg, 0, 0);
+
+  lv_obj_t *card = lv_obj_create(modal_confirm_bg);
+  lv_obj_set_size(card, 320, 156);
+  lv_obj_center(card);
+  lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(card, lv_color_hex(0x181B22), 0);
+  lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(card, lv_color_hex(0x323846), 0);
+  lv_obj_set_style_border_width(card, 1, 0);
+  lv_obj_set_style_radius(card, 10, 0);
+  lv_obj_set_style_pad_all(card, 14, 0);
+
+  lv_obj_t *lb_tit = lv_label_create(card);
+  lv_label_set_text(lb_tit, titulo);
+  lv_obj_set_style_text_font(lb_tit, &lv_font_montserrat_16, 0);
+  lv_obj_set_style_text_color(lb_tit, lv_color_white(), 0);
+  lv_obj_set_pos(lb_tit, 0, 0);
+
+  lv_obj_t *lb_msg = lv_label_create(card);
+  lv_label_set_text(lb_msg, mensagem);
+  lv_label_set_long_mode(lb_msg, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(lb_msg, 290);
+  lv_obj_set_style_text_font(lb_msg, &lv_font_montserrat_12, 0);
+  lv_obj_set_style_text_color(lb_msg, lv_color_hex(0xD0D7DE), 0);
+  lv_obj_set_pos(lb_msg, 0, 32);
+
+  lv_obj_t *bt_canc = lv_btn_create(card);
+  lv_obj_set_size(bt_canc, 134, 38);
+  lv_obj_align(bt_canc, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+  lv_obj_set_style_bg_color(bt_canc, lv_color_hex(0x262B36), 0);
+  lv_obj_add_event_cb(bt_canc, modal_cancelar_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_t *lb_canc = lv_label_create(bt_canc);
+  lv_label_set_text(lb_canc, "Cancelar");
+  lv_obj_center(lb_canc);
+
+  lv_obj_t *bt_ok = lv_btn_create(card);
+  lv_obj_set_size(bt_ok, 134, 38);
+  lv_obj_align(bt_ok, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+  lv_obj_set_style_bg_color(bt_ok, lv_palette_main(LV_PALETTE_RED), 0);
+  lv_obj_add_event_cb(bt_ok, modal_ok_cb, LV_EVENT_CLICKED, NULL);
+  lv_obj_t *lb_ok = lv_label_create(bt_ok);
+  lv_label_set_text(lb_ok, txt_confirmar);
+  lv_obj_center(lb_ok);
 }
 
 
