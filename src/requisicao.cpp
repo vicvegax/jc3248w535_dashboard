@@ -3,17 +3,32 @@
 #include <esp_bsp.h>
 #include "logger.h"
 
-// extern SemaphoreHandle_t lvgl_mutex; 
+RequisicaoAgendada req_atual = {"", NULL, NULL, false, false};
 
-RequisicaoAgendada req_atual = {"", NULL, false};
+static void notificar_erro(int httpCode) {
+  if (req_atual.error_callback == NULL) return;
+  if (bsp_display_lock(500)) {
+    req_atual.error_callback(httpCode);
+    bsp_display_unlock();
+  }
+}
 
+<<<<<<< HEAD
 void get(String path, HttpCallback callback_processamento) {
   // showHeap();//"ANTES GET");
   exibir_spinner(String("requisicao " + path));
+=======
+void get(String path, HttpCallback callback_processamento, bool show_spinner, HttpErrorCallback callback_erro) {
+  showHeap("ANTES GET");
+  if (show_spinner) {
+    exibir_spinner();
+  }
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
 
-  // Apenas agenda a requisição para o loop principal executar fora do LVGL
   req_atual.url = "http://" + cluster.http + ":" + cluster.port + path;
   req_atual.callback = callback_processamento;
+  req_atual.error_callback = callback_erro;
+  req_atual.show_spinner = show_spinner;
   req_atual.pendente = true;
 
   LOG_WARN("REQUISICAO", "GET agendado: %s", req_atual.url.c_str());
@@ -21,51 +36,63 @@ void get(String path, HttpCallback callback_processamento) {
 
 void requisicoes_pendentes() {
   if (!req_atual.pendente) return;
-  req_atual.pendente = false; // Consome o agendamento
+  req_atual.pendente = false;
+  bool usar_spinner = req_atual.show_spinner;
 
   if (WiFi.status() != WL_CONNECTED) {
+<<<<<<< HEAD
     //Serial.println("!!!!!!! Erro: Wi-Fi desconectado.");
     // showHeap();//"DEPOIS GET");
+=======
+    showHeap("DEPOIS GET");
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
     LOG_ERROR("REQUISICAO", "Wifi Desconectado");
-    ocultar_spinner();
+    notificar_erro(-100);
+    if (usar_spinner) ocultar_spinner();
     return;
   }
-  // LOG_WARN_1("REQUISICAO", "Processando...");
+
   HTTPClient http;
   http.begin(req_atual.url);
-  
+
   String bearerHeader = "Bearer " + String(cluster.token);
   http.addHeader("Authorization", bearerHeader.c_str());
-  // (Opcional) Garante que o servidor saiba que você espera um JSON
-  http.addHeader("Accept", "application/json"); 
-  http.setTimeout(2000);
+  http.addHeader("Accept", "application/json");
+  http.setTimeout(3500);
   int httpCode = http.GET();
   if (httpCode == HTTP_CODE_OK) {
-    // LOG_INFO_1("REQUISICAO", "Dados foram recebidos...");
     String payload = http.getString();
-   
-    // Aloca o buffer do JSON de forma dinâmica
+
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, payload);
-    
-    // Se o JSON for válido e houver uma função cadastrada, envia os dados
+
     if (!error && req_atual.callback != NULL) {
+<<<<<<< HEAD
       if (bsp_display_lock(100)) {
+=======
+      if (bsp_display_lock(500)) {
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
         LOG_INFO("REQUISICAO", "Dados recebidos. Processando callback...");
         req_atual.callback(doc);
         bsp_display_unlock();
       } else {
         LOG_ERROR("REQUISICAO", "Nao foi possivel obter o lock do LVGL.");
       }
-
     } else if (error) {
       LOG_ERROR("REQUISICAO", "Erro no Parse do JSON: %s", error.c_str());
+      notificar_erro(-200);
     }
   } else {
     LOG_ERROR("REQUISICAO", "Erro HTTP: %d", httpCode);
+    notificar_erro(httpCode);
   }
   http.end();
+<<<<<<< HEAD
   // showHeap();//"DEPOIS GET");
   ocultar_spinner();
 
+=======
+  showHeap("DEPOIS GET");
+  if (usar_spinner) ocultar_spinner();
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
 }

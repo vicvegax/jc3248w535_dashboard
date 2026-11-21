@@ -8,12 +8,21 @@
 
 // Define um "tipo" para a nossa função de callback que processará o JSON
 typedef void (*HttpCallback)(JsonDocument& doc);
+typedef void (*HttpErrorCallback)(int httpCode);
 
 // Estrutura para agendar a requisição fora do loop do LVGL
 struct RequisicaoAgendada {
+<<<<<<< HEAD
   String url;
   HttpCallback callback;
   bool pendente;
+=======
+    String url;
+    HttpCallback callback;
+    HttpErrorCallback error_callback;
+    bool show_spinner;
+    bool pendente;
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
 };
 
 // Variável global para agendamento (será gerenciada no loop)
@@ -21,7 +30,7 @@ extern RequisicaoAgendada req_atual;
 
 // Função genérica para disparar o GET (chame esta função nas suas Actions)
 // Adicionar a "/" no inicio
-void get(String path, HttpCallback callback_processamento);
+void get(String path, HttpCallback callback_processamento, bool show_spinner = true, HttpErrorCallback callback_erro = NULL);
 
 // Função que roda no loop principal para processar sem travar a tela
 void requisicoes_pendentes();

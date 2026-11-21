@@ -1,22 +1,48 @@
 #include "ui/ui.h"
 #include "db_form_cluster.h"
+#include "db_cluster.h"
 #include "config.h"
 
 extern "C" void action_fechar_form_cluster(lv_event_t *e) {
-  // TODO: Implement action cancelar_cluster here
+  (void)e;
   lv_event_send(objects.keyboard_1, LV_EVENT_CANCEL, NULL);
   lv_scr_load(objects.main);
 }
 
-
 extern "C" void action_salvar_form_cluster(lv_event_t *e) {
+<<<<<<< HEAD
   // TODO: Implement action salvar_config here
   // lv_event_send(objects.keyboard_1, LV_EVENT_CANCEL, NULL);
   Cluster item = {-1, String(lv_textarea_get_text(objects.ed_cluster_nome)), String(lv_textarea_get_text(objects.ed_cluster_http)), "abcd1234", String(lv_textarea_get_text(objects.ed_cluster_port)).toInt()};
-  adicionarCluster(item);
-  Serial.println("Configuração HTTP salva!");
-  lv_obj_t * label = lv_obj_get_child(objects.bt_salvar_cluster, 0);
+=======
+  (void)e;
   lv_event_send(objects.keyboard_1, LV_EVENT_CANCEL, NULL);
+
+  String nome = String(lv_textarea_get_text(objects.ed_cluster_nome));
+  String http = String(lv_textarea_get_text(objects.ed_cluster_http));
+  int port = String(lv_textarea_get_text(objects.ed_cluster_port)).toInt();
+  nome.trim();
+  http.trim();
+  if (http.length() == 0) {
+    return;
+  }
+  if (nome.length() == 0) {
+    nome = http;
+  }
+  if (port <= 0) {
+    port = 3000;
+  }
+
+  Cluster item = {nome, http, "abcd1234", port};
+>>>>>>> 4292549 (melhorias:tema,status,alertas,tempo de tela,modal confirmacao)
+  adicionarCluster(item);
+
+  Cluster itens[MAX_CLUSTERS];
+  int total = carregarClusters(itens);
+  if (total > 0) {
+    atualizaClusterGlobal(total - 1);
+  }
+
   lv_scr_load(objects.main);
-  Serial.printf("Form Cluster salvo: %s - %s:%d\n", item.nome.c_str(), item.http.c_str(), item.port);
+  lv_lista_clusters();
 }
