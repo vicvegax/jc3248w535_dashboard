@@ -177,7 +177,7 @@ void create_screen_main() {
                     // tab_docker
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Docker");
                     objects.tab_docker = obj;
-                    lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
+                    // lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
                     lv_obj_clear_flag(obj, LV_OBJ_FLAG_CLICKABLE);
                     {
                         lv_obj_t *parent_obj = obj;
@@ -216,7 +216,7 @@ void create_screen_main() {
                     // tab_rede
                     lv_obj_t *obj = lv_tabview_add_tab(parent_obj, "Rede");
                     objects.tab_rede = obj;
-                    lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
+                    // lv_obj_add_event_cb(obj, action_atualizar_aba, LV_EVENT_PRESSED, (void *)0);
                     {
                         lv_obj_t *parent_obj = obj;
                         {
@@ -285,7 +285,7 @@ void create_screen_main() {
                                             lv_obj_set_size(obj, 332, 31);
                                             lv_slider_set_range(obj, 5, 100);
                                             lv_slider_set_value(obj, 40, LV_ANIM_OFF);
-                                            lv_obj_add_event_cb(obj, action_mudar_brilho, LV_EVENT_VALUE_CHANGED, (void *)0);
+                                            // lv_obj_add_event_cb(obj, action_mudar_brilho, LV_EVENT_VALUE_CHANGED, (void *)0);
                                         }
                                         {
                                             lv_obj_t *obj = lv_btn_create(parent_obj);
@@ -548,7 +548,7 @@ void create_screen_form_black() {
     objects.form_black = obj;
     lv_obj_set_pos(obj, 0, 0);
     lv_obj_set_size(obj, 480, 320);
-    lv_obj_add_event_cb(obj, action_close_screensaver, LV_EVENT_RELEASED, (void *)0);
+    // lv_obj_add_event_cb(obj, action_close_screensaver, LV_EVENT_RELEASED, (void *)0);
     lv_obj_set_style_bg_color(obj, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
     
     tick_screen_form_black();
