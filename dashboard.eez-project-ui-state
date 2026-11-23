@@ -71,6 +71,7 @@
           },
           {
             "type": "border",
+            "selected": 0,
             "location": "bottom",
             "children": [
               {
@@ -215,8 +216,7 @@
                   },
                   "icon": "svg:page"
                 }
-              ],
-              "active": true
+              ]
             },
             {
               "type": "row",
@@ -236,7 +236,8 @@
                       "enableClose": false,
                       "icon": "svg:properties"
                     }
-                  ]
+                  ],
+                  "active": true
                 },
                 {
                   "type": "tabset",
@@ -1113,7 +1114,8 @@
             "0": {
               "0": {
                 "$selected": true
-              }
+              },
+              "1": {}
             },
             "4": {},
             "5": {
@@ -1131,7 +1133,7 @@
       "transform": {
         "translate": {
           "x": -251.6,
-          "y": -288.9100000000001
+          "y": -168.91000000000008
         },
         "scale": 1
       },
